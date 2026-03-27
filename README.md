@@ -15,7 +15,6 @@ spendsight/
     api/
     worker/
     web/
-  infra/
   scripts/
 ```
 
@@ -32,7 +31,7 @@ Each app is intentionally self-contained so you can run components independently
 From repo root:
 
 ```powershell
-docker compose -f infra/docker-compose.yml up -d postgres redis
+docker compose -f docker-compose.yml up -d postgres redis
 ```
 
 This brings up:
@@ -82,7 +81,13 @@ Open <http://localhost:5173>.
 ## Full stack via Docker
 
 ```powershell
-docker compose -f infra/docker-compose.yml up --build
+docker compose -f docker-compose.yml up --build
+```
+
+If you already ran an older schema, reset volumes before first run with this update:
+
+```powershell
+docker compose -f docker-compose.yml down -v
 ```
 
 ## Environment variables and keys
@@ -92,14 +97,18 @@ docker compose -f infra/docker-compose.yml up --build
 - `DATABASE_URL`: Postgres DSN
 - `REDIS_URL`: Redis connection URL
 - `JWT_SECRET`: secret for API auth token signing
-- `UPLOAD_DIR`: local file storage path
+- `UPLOAD_DIR`: local object-store backing path for `local://` mode
+- `STORAGE_PROVIDER`: `local` or `gcs`
+- `GCS_BUCKET`: required when `STORAGE_PROVIDER=gcs`
+- `ALLOWED_UPLOAD_EXTENSIONS`: includes `.docx,.pdf,.png,.jpg,.jpeg`
 - `QUEUE_NAME`: Redis list name for queued jobs
 - `JOB_STATUS_TTL_SECONDS`: job status cache TTL (default 24h)
 - `ANALYTICS_CACHE_TTL_SECONDS`: analytics cache TTL (default 10m)
 - `CORS_ORIGINS`: comma-separated origins
-- `DOCUMENT_AI_ENABLED`: `true/false`
-- `GCP_PROJECT_ID`, `GCP_LOCATION`, `GCP_DOCUMENT_AI_PROCESSOR_ID`: required only when `DOCUMENT_AI_ENABLED=true`
-- `GOOGLE_APPLICATION_CREDENTIALS`: path to GCP service account JSON only for real GCP runs
+- `LLM_PROVIDER`: currently `gemini`
+- `GEMINI_MODEL`: default `gemini-2.5-flash`
+- `GCP_PROJECT_ID`, `GCP_LOCATION`,
+- `GOOGLE_APPLICATION_CREDENTIALS`: required for live Gemini/GCS runs
 
 ### `apps/worker/.env`
 
@@ -107,9 +116,12 @@ docker compose -f infra/docker-compose.yml up --build
 - `REDIS_URL`
 - `QUEUE_NAME`
 - `UPLOAD_DIR`
+- `STORAGE_PROVIDER`
+- `GCS_BUCKET`
 - `POLL_TIMEOUT_SECONDS`
-- `DOCUMENT_AI_ENABLED`
-- same optional GCP Document AI vars as API
+- `GEMINI_MODEL`
+- `GCP_PROJECT_ID`, `GCP_LOCATION`,
+- `GOOGLE_APPLICATION_CREDENTIALS`
 
 ### `apps/web/.env`
 
@@ -117,7 +129,7 @@ docker compose -f infra/docker-compose.yml up --build
 
 ## Expectations and scope
 
-- Local mode uses Redis queue + local file storage and a deterministic mock extractor.
-- Real GCP mode can be enabled with env flags and credentials.
+- Pipeline now uses a real LLM extraction call (Gemini via Vertex AI) with strict JSON schema validation.
+- Worker reads documents from object URIs (`gs://...` or `local://...`) instead of direct file paths in DB.
 - Current auth is email/password with JWT, suitable for course MVP.
-- Document AI integration is structured for extension; local runs do not require cloud keys.
+- Common file types supported: `.docx`, `.pdf`, `.png`, `.jpg`, `.jpeg`.

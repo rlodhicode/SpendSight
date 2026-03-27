@@ -27,7 +27,7 @@ services:
 
   api:
     build:
-      context: ../apps/api
+      context: ./apps/api
     environment:
       DATABASE_URL: postgresql://spendsight:spendsight@postgres:5432/spendsight
       REDIS_URL: redis://redis:6379/0
@@ -35,8 +35,10 @@ services:
       UPLOAD_DIR: /data/uploads
       CORS_ORIGINS: http://localhost:5173
       QUEUE_NAME: bill-jobs
+      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/gcp-creds.json
     volumes:
       - spendsight_uploads:/data/uploads
+      - ./secrets:/app/secrets:ro
     ports:
       - "8000:8000"
     depends_on:
@@ -47,14 +49,16 @@ services:
 
   worker:
     build:
-      context: ../apps/worker
+      context: ./apps/worker
     environment:
       DATABASE_URL: postgresql://spendsight:spendsight@postgres:5432/spendsight
       REDIS_URL: redis://redis:6379/0
       QUEUE_NAME: bill-jobs
       UPLOAD_DIR: /data/uploads
+      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/gcp-creds.json
     volumes:
       - spendsight_uploads:/data/uploads
+      - ./secrets:/app/secrets:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,7 +69,7 @@ services:
 
   web:
     build:
-      context: ../apps/web
+      context: ./apps/web
     environment:
       VITE_API_BASE_URL: http://localhost:8000
     ports:

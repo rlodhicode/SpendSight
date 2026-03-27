@@ -35,13 +35,24 @@ class BillRecordResponse(BaseModel):
     id: str
     utility_type: str
     provider_name: str
+    account_number: str | None
     billing_period_start: date
     billing_period_end: date
+    due_date: date | None
     total_amount_due: float
     currency: str
+    usage_amount: float | None
+    usage_unit: str | None
     usage_kwh: float | None
     usage_gallons: float | None
     usage_therms: float | None
+    previous_balance: float | None
+    payments_credits: float | None
+    current_charges: float | None
+    adjustments_json: list | None
+    line_items_json: list | None
+    meter_readings_json: list | None
+    raw_extraction_json: dict | None
     confidence_score: float
     extracted_at: datetime
 
@@ -63,4 +74,3 @@ class AnalyticsSummaryResponse(BaseModel):
     totals_by_month: list[MonthlyTotal]
     totals_by_provider: list[NamedTotal]
     totals_by_utility: list[NamedTotal]
-

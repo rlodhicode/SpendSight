@@ -7,7 +7,8 @@ import redis
 
 from .config import settings
 from .database import BillRecord, Document, ProcessingJob, SessionLocal
-from .extractor import mock_extract
+from .llm_extractor import extract_with_gemini
+from .object_storage import download_document
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("spendsight-worker")
@@ -46,22 +47,41 @@ def process_job(payload: dict) -> None:
         db.commit()
         set_job_status(job_id, "processing")
 
-        extracted = mock_extract(document.storage_uri, document.utility_type)
+        file_bytes, filename = download_document(document.storage_uri)
+        extracted = extract_with_gemini(file_bytes, filename)
+        usage_amount = extracted.usage.amount
+        usage_unit = extracted.usage.unit
+        usage_kwh = usage_amount if usage_unit == "kWh" else None
+        usage_gallons = usage_amount if usage_unit == "Gallons" else None
+        usage_therms = usage_amount if usage_unit == "Therms" else None
+        mapped_utility_type = extracted.header.utility_type or document.utility_type
+        total_amount_due = extracted.financials.total_amount_due or 0.0
         existing = db.query(BillRecord).filter(BillRecord.document_id == document.id).first()
         if not existing:
             bill = BillRecord(
                 document_id=document.id,
                 user_id=document.user_id,
-                utility_type=document.utility_type,
-                provider_name=extracted.provider_name,
-                billing_period_start=extracted.billing_period_start,
-                billing_period_end=extracted.billing_period_end,
-                total_amount_due=extracted.total_amount_due,
-                currency=extracted.currency,
-                usage_kwh=extracted.usage_kwh,
-                usage_gallons=extracted.usage_gallons,
-                usage_therms=extracted.usage_therms,
-                confidence_score=extracted.confidence_score,
+                utility_type=mapped_utility_type,
+                provider_name=extracted.header.provider_name or "Unknown Provider",
+                account_number=extracted.header.account_number,
+                billing_period_start=extracted.header.billing_period.start_date or datetime.utcnow().date(),
+                billing_period_end=extracted.header.billing_period.end_date or datetime.utcnow().date(),
+                due_date=extracted.header.due_date,
+                total_amount_due=total_amount_due,
+                currency="USD",
+                usage_amount=usage_amount,
+                usage_unit=usage_unit,
+                usage_kwh=usage_kwh,
+                usage_gallons=usage_gallons,
+                usage_therms=usage_therms,
+                previous_balance=extracted.financials.previous_balance,
+                payments_credits=extracted.financials.payments_credits,
+                current_charges=extracted.financials.current_charges,
+                adjustments_json=[item.model_dump() for item in extracted.financials.adjustments],
+                line_items_json=[item.model_dump() for item in extracted.line_items],
+                meter_readings_json=[item.model_dump() for item in extracted.usage.meter_readings],
+                raw_extraction_json=extracted.model_dump(mode="json"),
+                confidence_score=0.9,
             )
             db.add(bill)
 
@@ -103,4 +123,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

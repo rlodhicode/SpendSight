@@ -8,14 +8,14 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     poll_timeout_seconds: int = 5
     job_status_ttl_seconds: int = 86_400
-    document_ai_enabled: bool = False
+    storage_provider: str = "local"
+    gcs_bucket: str = ""
+    gemini_model: str = "gemini-2.5-flash"
     gcp_project_id: str = ""
-    gcp_location: str = "us"
-    gcp_document_ai_processor_id: str = ""
+    gcp_location: str = "us-central1"
     google_application_credentials: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
 
 settings = Settings()
-

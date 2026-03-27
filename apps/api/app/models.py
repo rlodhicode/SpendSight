@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Numeric, String, Text
+from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -29,6 +29,7 @@ class Document(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
     utility_type: Mapped[str] = mapped_column(String(64), index=True)
     storage_uri: Mapped[str] = mapped_column(Text)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -59,16 +60,26 @@ class BillRecord(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     utility_type: Mapped[str] = mapped_column(String(64), index=True)
     provider_name: Mapped[str] = mapped_column(String(255), index=True)
+    account_number: Mapped[str | None] = mapped_column(String(128), nullable=True)
     billing_period_start: Mapped[date] = mapped_column(Date)
     billing_period_end: Mapped[date] = mapped_column(Date, index=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     total_amount_due: Mapped[float] = mapped_column(Numeric(10, 2))
     currency: Mapped[str] = mapped_column(String(8), default="USD")
+    usage_amount: Mapped[float | None] = mapped_column(Float, nullable=True)
+    usage_unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
     usage_kwh: Mapped[float | None] = mapped_column(Float, nullable=True)
     usage_gallons: Mapped[float | None] = mapped_column(Float, nullable=True)
     usage_therms: Mapped[float | None] = mapped_column(Float, nullable=True)
+    previous_balance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    payments_credits: Mapped[float | None] = mapped_column(Float, nullable=True)
+    current_charges: Mapped[float | None] = mapped_column(Float, nullable=True)
+    adjustments_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    line_items_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    meter_readings_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    raw_extraction_json: Mapped[dict] = mapped_column(JSON)
     confidence_score: Mapped[float] = mapped_column(Float, default=0.0)
     extracted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     document: Mapped["Document"] = relationship(back_populates="bill")
     user: Mapped["User"] = relationship(back_populates="bills")
-

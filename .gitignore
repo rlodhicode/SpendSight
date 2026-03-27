@@ -9,4 +9,4 @@ dist/
 *.log
 apps/api/uploads/
 README-local.md
-
+secrets/

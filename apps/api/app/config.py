@@ -12,10 +12,13 @@ class Settings(BaseSettings):
     job_status_ttl_seconds: int = 86_400
     analytics_cache_ttl_seconds: int = 600
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
-    document_ai_enabled: bool = False
+    storage_provider: str = "local"
+    gcs_bucket: str = ""
+    allowed_upload_extensions: str = ".pdf,.png,.jpg,.jpeg,.docx"
+    llm_provider: str = "gemini"
+    gemini_model: str = "gemini-2.5-flash"
     gcp_project_id: str = ""
     gcp_location: str = "us"
-    gcp_document_ai_processor_id: str = ""
     google_application_credentials: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
@@ -24,6 +27,9 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
+    @property
+    def allowed_upload_extensions_list(self) -> list[str]:
+        return [item.strip().lower() for item in self.allowed_upload_extensions.split(",") if item.strip()]
+
 
 settings = Settings()
-

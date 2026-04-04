@@ -1,0 +1,76 @@
+.root {
+  min-height: 100vh;
+  background: linear-gradient(160deg, #eef5fc 0%, #e8f5ee 50%, #f0f4f8 100%);
+  background-attachment: fixed;
+}
+
+.appBar {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(213, 227, 238, 0.8);
+  color: #1a2533 !important;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px !important;
+  min-height: 64px !important;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brandIcon {
+  color: #1b4f72;
+  font-size: 1.6rem !important;
+}
+
+.brandText {
+  font-family: "Playfair Display", serif !important;
+  font-weight: 700 !important;
+  font-size: 1.35rem !important;
+  background: linear-gradient(135deg, #1b4f72, #17a589);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.3px;
+}
+
+.logoutBtn {
+  color: #4a6072 !important;
+  border: 1px solid #d5e3ee !important;
+  border-radius: 10px !important;
+  padding: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.logoutBtn:hover {
+  background: #f0f4f8 !important;
+  border-color: #1b4f72 !important;
+  color: #1b4f72 !important;
+}
+
+.main {
+  flex: 1;
+}
+
+.container {
+  padding-top: 32px !important;
+  padding-bottom: 48px !important;
+}
+
+@media (max-width: 600px) {
+  .toolbar {
+    padding: 0 16px !important;
+  }
+
+  .container {
+    padding-top: 20px !important;
+    padding-bottom: 32px !important;
+  }
+}

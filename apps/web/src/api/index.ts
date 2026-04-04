@@ -4,7 +4,7 @@ import type {
   BillRecord,
   JobStatus,
   UploadResponse,
-} from "./types";
+} from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -38,7 +38,7 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
       const payload = await response.json();
       detail = payload.detail ?? detail;
     } catch {
-      // Ignore parse failures and return generic error.
+      // ignore parse errors
     }
     throw new Error(detail);
   }
@@ -62,7 +62,7 @@ export const api = {
   uploadBill(
     token: string,
     utilityType: string,
-    file: File,
+    file: File
   ): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append("utility_type", utilityType);

@@ -1,0 +1,58 @@
+.wrapper {
+  background: #f7fafc;
+  border: 1px solid #d5e3ee;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.jobId {
+  color: #7a92a6 !important;
+  font-size: 0.78rem !important;
+}
+
+.code {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 0.78rem;
+  color: #4a6072;
+  background: #eef3f8;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.chip {
+  font-size: 0.72rem !important;
+  height: 24px !important;
+}
+
+.progress {
+  border-radius: 4px;
+  height: 3px !important;
+}
+
+.error {
+  color: #c0392b !important;
+  font-size: 0.78rem !important;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinning {
+  animation: spin 1.2s linear infinite;
+}

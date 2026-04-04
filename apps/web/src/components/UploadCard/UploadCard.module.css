@@ -1,0 +1,143 @@
+.card {
+  border: 1px solid #d5e3ee !important;
+  border-radius: 20px !important;
+  height: 100%;
+}
+
+.content {
+  padding: 28px !important;
+}
+
+.heading {
+  font-weight: 700 !important;
+  color: #1a2533 !important;
+  margin-bottom: 4px !important;
+}
+
+.subheading {
+  color: #7a92a6 !important;
+  margin-bottom: 24px !important;
+  font-size: 0.875rem !important;
+}
+
+.alert {
+  margin-bottom: 16px !important;
+  border-radius: 10px !important;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dropzone {
+  border: 2px dashed #c8d8e8;
+  border-radius: 14px;
+  padding: 28px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #f7fafc;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropzone:hover {
+  border-color: #2e86c1;
+  background: rgba(46, 134, 193, 0.04);
+}
+
+.dropzone:focus-visible {
+  outline: 2px solid #1b4f72;
+  outline-offset: 2px;
+}
+
+.dragOver {
+  border-color: #1b4f72 !important;
+  background: rgba(27, 79, 114, 0.06) !important;
+  transform: scale(1.01);
+}
+
+.hasFile {
+  border-color: #17a589 !important;
+  background: rgba(23, 165, 137, 0.04) !important;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.dropzoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.uploadIcon {
+  font-size: 2.2rem !important;
+  color: #7a92a6;
+  transition: color 0.2s ease;
+}
+
+.dropzone:hover .uploadIcon {
+  color: #2e86c1;
+}
+
+.dropText {
+  color: #4a6072 !important;
+  font-size: 0.9rem !important;
+}
+
+.browseLink {
+  color: #1b4f72;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.acceptedTypes {
+  color: #9ab0c0 !important;
+  font-size: 0.72rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filePreview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+  justify-content: center;
+}
+
+.fileIcon {
+  color: #17a589 !important;
+  font-size: 1.8rem !important;
+}
+
+.fileName {
+  color: #1a2533 !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  word-break: break-all;
+}
+
+.fileSize {
+  color: #7a92a6 !important;
+  font-size: 0.75rem !important;
+}
+
+@media (max-width: 600px) {
+  .content {
+    padding: 20px !important;
+  }
+
+  .dropzone {
+    padding: 20px 16px;
+    min-height: 100px;
+  }
+}

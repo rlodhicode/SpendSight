@@ -37,6 +37,11 @@ describe("JobStatusBadge", () => {
     expect(screen.getByTestId("job-status-failed")).toBeInTheDocument();
   });
 
+  it("shows Needs Review chip for needs_review status", () => {
+    renderWithTheme(<JobStatusBadge jobId={JOB_ID} status="needs_review" />);
+    expect(screen.getByTestId("job-status-needs_review")).toBeInTheDocument();
+  });
+
   it("displays error message when status is failed and errorMessage provided", () => {
     renderWithTheme(
       <JobStatusBadge

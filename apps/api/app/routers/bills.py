@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 from pathlib import Path
+from uuid import uuid4
 
 from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user
+from ..events import ProcessingEvent
 from ..models import BillRecord, Document, ProcessingJob, User
 from ..schemas import BillRecordResponse, UploadResponse
 from ..services import enqueue_job, save_upload, set_job_status
@@ -44,9 +46,16 @@ def upload_bill(
     db.commit()
     db.refresh(job)
 
-    payload = {"job_id": job.id, "document_id": document.id, "user_id": user.id}
-    enqueue_job(payload)
-    set_job_status(job.id, "queued")
+    event = ProcessingEvent(
+        trace_id=str(uuid4()),
+        job_id=job.id,
+        document_id=document.id,
+        user_id=user.id,
+        storage_uri=document.storage_uri,
+        uploaded_at=document.uploaded_at,
+    )
+    enqueue_job(event)
+    set_job_status(job.id, "queued", review_required=False, review_status="not_required")
 
     return UploadResponse(document_id=document.id, job_id=job.id, status=job.status)
 
@@ -83,6 +92,11 @@ def list_bills(db: Session = Depends(get_db), user: User = Depends(get_current_u
             meter_readings_json=row.meter_readings_json,
             raw_extraction_json=row.raw_extraction_json,
             confidence_score=row.confidence_score,
+            overall_confidence=row.overall_confidence,
+            review_required=row.review_required,
+            review_status=row.review_status or "not_required",
+            reviewed_at=row.reviewed_at,
+            reviewed_by=row.reviewed_by,
             extracted_at=row.extracted_at,
         )
         for row in rows

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import Base, engine
-from .routers import analytics, auth, bills, jobs
+from .routers import analytics, auth, bills, jobs, review
 
 app = FastAPI(title="SpendSight API", version="0.1.0")
 
@@ -33,4 +33,5 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(bills.router, prefix="/api/v1")
 app.include_router(jobs.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
+app.include_router(review.router, prefix="/api/v1")
 

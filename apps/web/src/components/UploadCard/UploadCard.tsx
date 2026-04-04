@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -10,20 +11,20 @@ import {
   MenuItem,
   Select,
   Typography,
-  Alert,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import styles from "./UploadCard.module.css";
 
 const UTILITY_OPTIONS = [
-  { value: "electricity", label: "⚡ Electricity" },
-  { value: "water", label: "💧 Water" },
-  { value: "gas", label: "🔥 Gas" },
-  { value: "internet", label: "🌐 Internet" },
+  { value: "electric", label: "Electric" },
+  { value: "water", label: "Water" },
+  { value: "gas", label: "Gas" },
+  { value: "internet", label: "Internet" },
+  { value: "waste", label: "Waste" },
 ];
 
-const ACCEPTED_TYPES = ".pdf,.png,.jpg,.jpeg";
+const ACCEPTED_TYPES = ".pdf,.png,.jpg,.jpeg,.docx";
 
 interface UploadCardProps {
   onUpload: (utilityType: string, file: File) => Promise<void>;
@@ -36,7 +37,7 @@ export const UploadCard: React.FC<UploadCardProps> = ({
   uploading = false,
   error,
 }) => {
-  const [utilityType, setUtilityType] = useState("electricity");
+  const [utilityType, setUtilityType] = useState("electric");
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -97,7 +98,10 @@ export const UploadCard: React.FC<UploadCardProps> = ({
 
           <Box
             className={`${styles.dropzone} ${dragOver ? styles.dragOver : ""} ${file ? styles.hasFile : ""}`}
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
@@ -135,7 +139,7 @@ export const UploadCard: React.FC<UploadCardProps> = ({
                   Drop file here or <span className={styles.browseLink}>browse</span>
                 </Typography>
                 <Typography variant="caption" className={styles.acceptedTypes}>
-                  PDF, PNG, JPG, JPEG
+                  PDF, PNG, JPG, JPEG, DOCX
                 </Typography>
               </Box>
             )}
@@ -149,14 +153,10 @@ export const UploadCard: React.FC<UploadCardProps> = ({
             disabled={uploading || !file}
             data-testid="upload-button"
             startIcon={
-              uploading ? (
-                <CircularProgress size={18} color="inherit" />
-              ) : (
-                <CloudUploadIcon />
-              )
+              uploading ? <CircularProgress size={18} color="inherit" /> : <CloudUploadIcon />
             }
           >
-            {uploading ? "Uploading…" : "Upload & Analyze"}
+            {uploading ? "Uploading..." : "Upload & Analyze"}
           </Button>
         </Box>
       </CardContent>

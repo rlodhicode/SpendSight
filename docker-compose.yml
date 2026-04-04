@@ -1,4 +1,16 @@
 services:
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8681 --project=spendsight-local
+    ports:
+      - "8681:8681"
+
+  fake-gcs:
+    image: fsouza/fake-gcs-server:1.52.2
+    command: -scheme http -port 4443 -external-url http://localhost:4443
+    ports:
+      - "4443:4443"
+
   postgres:
     image: postgres:16
     environment:
@@ -35,6 +47,10 @@ services:
       UPLOAD_DIR: /data/uploads
       CORS_ORIGINS: http://localhost:5173
       QUEUE_NAME: bill-jobs
+      QUEUE_PROVIDER: pubsub
+      PUBSUB_TOPIC: bill-jobs
+      PUBSUB_PROJECT_ID: spendsight-local
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8681
       GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/gcp-creds.json
     volumes:
       - spendsight_uploads:/data/uploads
@@ -54,6 +70,10 @@ services:
       DATABASE_URL: postgresql://spendsight:spendsight@postgres:5432/spendsight
       REDIS_URL: redis://redis:6379/0
       QUEUE_NAME: bill-jobs
+      QUEUE_PROVIDER: pubsub
+      PUBSUB_PROJECT_ID: spendsight-local
+      PUBSUB_SUBSCRIPTION: bill-jobs-sub
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8681
       UPLOAD_DIR: /data/uploads
       GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/gcp-creds.json
     volumes:

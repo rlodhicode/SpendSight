@@ -4,9 +4,10 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import HourglassTopIcon from "@mui/icons-material/HourglassTop";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
+import RuleIcon from "@mui/icons-material/Rule";
 import styles from "./JobStatusBadge.module.css";
 
-type JobStatusType = "queued" | "processing" | "completed" | "failed";
+type JobStatusType = "queued" | "processing" | "completed" | "failed" | "needs_review";
 
 interface JobStatusBadgeProps {
   jobId: string;
@@ -16,7 +17,7 @@ interface JobStatusBadgeProps {
 
 const statusConfig: Record<
   JobStatusType,
-  { label: string; color: "default" | "primary" | "success" | "error"; icon: React.ReactElement }
+  { label: string; color: "default" | "primary" | "success" | "error" | "warning"; icon: React.ReactElement }
 > = {
   queued: {
     label: "Queued",
@@ -38,6 +39,11 @@ const statusConfig: Record<
     color: "error",
     icon: <ErrorIcon fontSize="small" />,
   },
+  needs_review: {
+    label: "Needs Review",
+    color: "warning",
+    icon: <RuleIcon fontSize="small" />,
+  },
 };
 
 export const JobStatusBadge: React.FC<JobStatusBadgeProps> = ({
@@ -52,7 +58,7 @@ export const JobStatusBadge: React.FC<JobStatusBadgeProps> = ({
     <Box className={styles.wrapper} data-testid="job-status-badge">
       <Box className={styles.row}>
         <Typography variant="caption" className={styles.jobId}>
-          Job <code className={styles.code}>{jobId.slice(0, 8)}…</code>
+          Job <code className={styles.code}>{jobId.slice(0, 8)}...</code>
         </Typography>
         <Chip
           label={config.label}

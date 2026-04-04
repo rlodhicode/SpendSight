@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Optional
 import json
 from datetime import datetime
 from pathlib import Path
@@ -8,8 +10,11 @@ from fastapi import UploadFile
 from google.cloud import storage
 
 from .config import settings
+from .events import ProcessingEvent
+from .queueing import get_queue_publisher
 
 redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
+queue_publisher = get_queue_publisher(redis_client)
 
 
 class StorageClient:
@@ -57,11 +62,26 @@ def save_upload(user_id: str, upload: UploadFile) -> str:
     return storage_client.upload(user_id, upload)
 
 
-def enqueue_job(payload: dict) -> None:
-    redis_client.lpush(settings.queue_name, json.dumps(payload))
+def enqueue_job(event: ProcessingEvent) -> None:
+    queue_publisher.publish(event)
 
 
-def set_job_status(job_id: str, status: str, error_message: str | None = None) -> None:
-    payload = {"job_id": job_id, "status": status, "updated_at": datetime.utcnow().isoformat(), "error_message": error_message}
+def set_job_status(
+    job_id: str,
+    status: str,
+    error_message: Optional[str] = None,
+    review_required: bool = False,
+    review_status: Optional[str] = None,
+) -> None:
+    payload = {
+        "job_id": job_id,
+        "status": status,
+        "updated_at": datetime.utcnow().isoformat(),
+        "error_message": error_message,
+        "review_required": review_required,
+        "review_status": review_status,
+    }
     redis_client.setex(f"job:{job_id}", settings.job_status_ttl_seconds, json.dumps(payload))
+
+
 

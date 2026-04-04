@@ -9,6 +9,11 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     upload_dir: str = "./uploads"
     queue_name: str = "bill-jobs"
+    queue_provider: str = "redis"
+    pubsub_topic: str = "bill-jobs"
+    pubsub_project_id: str = ""
+    pubsub_emulator_host: str = ""
+    pubsub_auto_create_topic: bool = True
     job_status_ttl_seconds: int = 86_400
     analytics_cache_ttl_seconds: int = 600
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
@@ -17,6 +22,7 @@ class Settings(BaseSettings):
     allowed_upload_extensions: str = ".pdf,.png,.jpg,.jpeg,.docx"
     llm_provider: str = "gemini"
     gemini_model: str = "gemini-2.5-flash"
+    extraction_confidence_threshold: float = 0.75
     gcp_project_id: str = ""
     gcp_location: str = "us"
     google_application_credentials: str = ""

@@ -16,19 +16,22 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 @router.get("/summary", response_model=AnalyticsSummaryResponse)
-def summary(months: int = 12, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    cache_key = f"analytics:{user.id}:{months}"
+def summary(
+    months: int = 12,
+    include_needs_review: bool = True,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    cache_key = f"analytics:{user.id}:{months}:{include_needs_review}"
     cached = redis_client.get(cache_key)
     if cached:
         return AnalyticsSummaryResponse(**json.loads(cached))
 
     cutoff = datetime.utcnow().date() - timedelta(days=30 * months)
-    rows = (
-        db.query(BillRecord)
-        .filter(BillRecord.user_id == user.id, BillRecord.billing_period_end >= cutoff)
-        .order_by(BillRecord.billing_period_end.asc())
-        .all()
-    )
+    query = db.query(BillRecord).filter(BillRecord.user_id == user.id, BillRecord.billing_period_end >= cutoff)
+    if not include_needs_review:
+        query = query.filter(BillRecord.review_status != "needs_review")
+    rows = query.order_by(BillRecord.billing_period_end.asc()).all()
 
     by_month: dict[str, float] = defaultdict(float)
     by_provider: dict[str, float] = defaultdict(float)

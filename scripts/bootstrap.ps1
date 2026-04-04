@@ -1,5 +1,5 @@
 Write-Host "Starting SpendSight local infrastructure..."
-docker compose -f infra/docker-compose.yml up -d postgres redis
+docker compose -f docker-compose.yml up -d postgres redis pubsub-emulator fake-gcs
 
 Write-Host "Infrastructure is up."
 Write-Host "Next:"

@@ -76,6 +76,7 @@ export const BillsTable: React.FC<BillsTableProps> = ({
                   <TableCell>Utility</TableCell>
                   <TableCell>Period End</TableCell>
                   <TableCell align="right">Amount</TableCell>
+                  <TableCell align="center">Review</TableCell>
                   <TableCell align="right">Confidence</TableCell>
                 </TableRow>
               </TableHead>
@@ -83,7 +84,7 @@ export const BillsTable: React.FC<BillsTableProps> = ({
                 {loading
                   ? Array.from({ length: 4 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 5 }).map((_, j) => (
+                        {Array.from({ length: 6 }).map((_, j) => (
                           <TableCell key={j}>
                             <Skeleton variant="text" width="80%" />
                           </TableCell>
@@ -122,6 +123,13 @@ export const BillsTable: React.FC<BillsTableProps> = ({
                           <Typography variant="body2" className={styles.amount}>
                             ${bill.total_amount_due.toFixed(2)}
                           </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          {bill.review_required ? (
+                            <Chip size="small" color="warning" label="Needs Review" />
+                          ) : (
+                            <Chip size="small" color="success" label="Reviewed/OK" variant="outlined" />
+                          )}
                         </TableCell>
                         <TableCell align="right">
                           <Tooltip

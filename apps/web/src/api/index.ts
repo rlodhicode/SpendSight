@@ -3,6 +3,9 @@ import type {
   AuthResponse,
   BillRecord,
   JobStatus,
+  ReviewDetail,
+  ReviewQueueResponse,
+  ReviewUpdateRequest,
   UploadResponse,
 } from "../types";
 
@@ -76,12 +79,30 @@ export const api = {
   getJob(token: string, jobId: string): Promise<JobStatus> {
     return request<JobStatus>(`/api/v1/jobs/${jobId}`, { token });
   },
-  getSummary(token: string): Promise<AnalyticsSummary> {
-    return request<AnalyticsSummary>("/api/v1/analytics/summary?months=12", {
-      token,
-    });
+  getSummary(token: string, includeNeedsReview = true): Promise<AnalyticsSummary> {
+    return request<AnalyticsSummary>(
+      `/api/v1/analytics/summary?months=12&include_needs_review=${includeNeedsReview}`,
+      {
+        token,
+      }
+    );
   },
   getBills(token: string): Promise<BillRecord[]> {
     return request<BillRecord[]>("/api/v1/bills", { token });
+  },
+  getReviewQueue(token: string, page = 1, pageSize = 20): Promise<ReviewQueueResponse> {
+    return request<ReviewQueueResponse>(`/api/v1/review/queue?page=${page}&page_size=${pageSize}`, {
+      token,
+    });
+  },
+  getReviewDetail(token: string, billId: string): Promise<ReviewDetail> {
+    return request<ReviewDetail>(`/api/v1/review/${billId}`, { token });
+  },
+  updateReview(token: string, billId: string, payload: ReviewUpdateRequest): Promise<ReviewDetail> {
+    return request<ReviewDetail>(`/api/v1/review/${billId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    });
   },
 };

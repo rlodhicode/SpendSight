@@ -63,7 +63,7 @@ describe("UploadCard", () => {
     fireEvent.click(screen.getByTestId("upload-button"));
 
     await waitFor(() => {
-      expect(mockUpload).toHaveBeenCalledWith("electricity", file);
+      expect(mockUpload).toHaveBeenCalledWith("electric", file);
     });
   });
 

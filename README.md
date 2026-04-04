@@ -1,45 +1,36 @@
 # SpendSight
 
-Cloud-native utility bill analytics platform with isolated components:
+Cloud-native utility bill analytics platform with decoupled backend processing.
 
-- `apps/api`: FastAPI service for auth, uploads, job status, and analytics
-- `apps/worker`: async processing worker (queue consumer + extraction + DB writes)
-- `apps/web`: React dashboard for upload, status polling, and analytics views
-- `infra`: Docker Compose for local dependencies and full-stack run
+- `apps/api`: FastAPI service for auth, uploads, status, analytics, and human review APIs
+- `apps/worker`: extraction worker service (Cloud Run push endpoint + local Redis consumer)
+- `apps/web`: React dashboard
+- `docker-compose.yml`: local infra and service orchestration
 
-## Project layout
+## Architecture (Current)
 
-```text
-spendsight/
-  apps/
-    api/
-    worker/
-    web/
-  scripts/
-```
+- Uploads are stored in object storage (`local://` for dev or `gs://` for GCS).
+- API publishes versioned processing events.
+- Queue provider is configurable:
+  - `pubsub` for production
+  - `redis` for local fallback
+  - In local Pub/Sub mode, topic/subscription can be auto-created by the app.
+- Worker extracts bill fields with Gemini on Vertex AI.
+- Worker persists:
+  - normalized bill records
+  - field-level confidence rows
+  - review-required status
+- Redis stores job status (24h TTL) and analytics cache (10m TTL).
 
-Each app is intentionally self-contained so you can run components independently.
+## Local Development
 
-## Local prerequisites
-
-- Python 3.11+
-- Node.js 20+
-- Docker Desktop
-
-## 1) Start infrastructure
-
-From repo root:
+### Start infra
 
 ```powershell
-docker compose -f docker-compose.yml up -d postgres redis
+docker compose up -d postgres redis pubsub-emulator fake-gcs
 ```
 
-This brings up:
-
-- PostgreSQL on `localhost:5434`
-- Redis on `localhost:6379`
-
-## 2) Run API
+### API
 
 ```powershell
 cd apps/api
@@ -50,11 +41,7 @@ copy .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-API docs: <http://localhost:8000/docs>
-
-## 3) Run worker
-
-In a second terminal:
+### Worker (local Redis queue mode)
 
 ```powershell
 cd apps/worker
@@ -65,9 +52,14 @@ copy .env.example .env
 python -m worker.main
 ```
 
-## 4) Run web dashboard
+### Worker (Cloud Run service mode / Pub/Sub push compatible)
 
-In a third terminal:
+```powershell
+cd apps/worker
+uvicorn worker.main:app --host 0.0.0.0 --port 8080
+```
+
+### Web
 
 ```powershell
 cd apps/web
@@ -76,60 +68,45 @@ copy .env.example .env
 npm run dev
 ```
 
-Open <http://localhost:5173>.
+## Key Environment Variables
 
-## Full stack via Docker
+### Queue
 
-```powershell
-docker compose -f docker-compose.yml up --build
-```
+- `QUEUE_PROVIDER`: `redis` or `pubsub`
+- `QUEUE_NAME`: Redis list name (Redis mode)
+- `PUBSUB_TOPIC`, `PUBSUB_PROJECT_ID`, `PUBSUB_EMULATOR_HOST`
+- `PUBSUB_AUTO_CREATE_TOPIC` (API)
+- `PUBSUB_AUTO_CREATE_RESOURCES` (worker)
 
-If you already ran an older schema, reset volumes before first run with this update:
+### Storage
 
-```powershell
-docker compose -f docker-compose.yml down -v
-```
-
-## Environment variables and keys
-
-### `apps/api/.env`
-
-- `DATABASE_URL`: Postgres DSN
-- `REDIS_URL`: Redis connection URL
-- `JWT_SECRET`: secret for API auth token signing
-- `UPLOAD_DIR`: local object-store backing path for `local://` mode
 - `STORAGE_PROVIDER`: `local` or `gcs`
-- `GCS_BUCKET`: required when `STORAGE_PROVIDER=gcs`
-- `ALLOWED_UPLOAD_EXTENSIONS`: includes `.docx,.pdf,.png,.jpg,.jpeg`
-- `QUEUE_NAME`: Redis list name for queued jobs
-- `JOB_STATUS_TTL_SECONDS`: job status cache TTL (default 24h)
-- `ANALYTICS_CACHE_TTL_SECONDS`: analytics cache TTL (default 10m)
-- `CORS_ORIGINS`: comma-separated origins
-- `LLM_PROVIDER`: currently `gemini`
-- `GEMINI_MODEL`: default `gemini-2.5-flash`
-- `GCP_PROJECT_ID`, `GCP_LOCATION`,
-- `GOOGLE_APPLICATION_CREDENTIALS`: required for live Gemini/GCS runs
+- `UPLOAD_DIR`: local object storage path
+- `GCS_BUCKET`: required for `gcs`
 
-### `apps/worker/.env`
+### Extraction / Review
 
-- `DATABASE_URL`
-- `REDIS_URL`
-- `QUEUE_NAME`
-- `UPLOAD_DIR`
-- `STORAGE_PROVIDER`
-- `GCS_BUCKET`
-- `POLL_TIMEOUT_SECONDS`
-- `GEMINI_MODEL`
-- `GCP_PROJECT_ID`, `GCP_LOCATION`,
-- `GOOGLE_APPLICATION_CREDENTIALS`
+- `GEMINI_MODEL`: Vertex Gemini model ID
+- `GCP_PROJECT_ID`, `GCP_LOCATION`
+- `EXTRACTION_CONFIDENCE_THRESHOLD`: review threshold (default `0.75`)
 
-### `apps/web/.env`
+## Review APIs
 
-- `VITE_API_BASE_URL` (default `http://localhost:8000`)
+- `GET /api/v1/review/queue?page=1&page_size=20`
+- `GET /api/v1/review/{bill_id}`
+- `PATCH /api/v1/review/{bill_id}`
 
-## Expectations and scope
+## Testing
 
-- Pipeline now uses a real LLM extraction call (Gemini via Vertex AI) with strict JSON schema validation.
-- Worker reads documents from object URIs (`gs://...` or `local://...`) instead of direct file paths in DB.
-- Current auth is email/password with JWT, suitable for course MVP.
-- Common file types supported: `.docx`, `.pdf`, `.png`, `.jpg`, `.jpeg`.
+```powershell
+cd apps/api
+pytest
+
+cd ../worker
+pytest
+```
+
+## Pub/Sub Dead-letter (Production)
+
+Configure a main subscription with retry policy and a dead-letter topic/subscription.  
+Recommended attributes: preserve `trace_id`, `job_id`, `schema_version`.

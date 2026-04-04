@@ -28,4 +28,13 @@ def get_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(get
         payload = json.loads(cached)
         return JobStatusResponse(**payload)
 
-    return JobStatusResponse(job_id=job.id, status=job.status, error_message=job.error_message, updated_at=job.updated_at)
+    review_required = bool(job.document.bill.review_required) if job.document and job.document.bill else False
+    review_status = job.document.bill.review_status if job.document and job.document.bill else "not_required"
+    return JobStatusResponse(
+        job_id=job.id,
+        status=job.status,
+        error_message=job.error_message,
+        review_required=review_required,
+        review_status=review_status,
+        updated_at=job.updated_at,
+    )

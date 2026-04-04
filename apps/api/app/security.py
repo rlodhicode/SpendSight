@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Optional
 import bcrypt
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
@@ -28,9 +30,12 @@ def create_access_token(subject: str) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def decode_access_token(token: str) -> str | None:
+def decode_access_token(token: str) -> Optional[str]:
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         return payload.get("sub")
     except JWTError:
         return None
+
+
+

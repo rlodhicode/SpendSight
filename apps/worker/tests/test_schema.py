@@ -5,6 +5,7 @@ from worker.llm_extractor import (
     _normalize_payload,
 )
 from worker.review import needs_human_review
+from worker.review import compute_weighted_overall_confidence, has_missing_required_fields
 
 
 def test_schema_validation():
@@ -99,3 +100,65 @@ def test_empty_extracted_document_defaults_to_low_confidence():
     fallback = _empty_extracted_document()
     assert fallback.overall_confidence == 0.05
     assert fallback.extracted.financials.total_amount_due is None
+
+
+def test_weighted_confidence_uses_required_field_weights():
+    payload = {
+        "header": {
+            "utility_type": "electric",
+            "provider_name": "Xcel Energy",
+            "account_number": "1234",
+            "billing_period": {"start_date": "2026-01-01", "end_date": "2026-01-31"},
+            "due_date": "2026-02-15",
+        },
+        "usage": {"amount": 100.0, "unit": "kWh", "meter_readings": []},
+        "financials": {"total_amount_due": 60.0, "adjustments": []},
+        "line_items": [],
+    }
+    extracted = UtilityBillSchema.model_validate(payload)
+    envelope = type(
+        "Doc",
+        (),
+        {
+            "overall_confidence": 0.0,
+            "field_confidences": [
+                FieldConfidence(field_name="header.provider_name", confidence_score=0.9),
+                FieldConfidence(field_name="header.billing_period.start_date", confidence_score=0.8),
+                FieldConfidence(field_name="header.billing_period.end_date", confidence_score=0.7),
+                FieldConfidence(field_name="financials.total_amount_due", confidence_score=0.95),
+                FieldConfidence(field_name="header.utility_type", confidence_score=0.85),
+                FieldConfidence(field_name="header.account_number", confidence_score=0.9),
+                FieldConfidence(field_name="header.due_date", confidence_score=0.8),
+            ],
+            "extracted": extracted,
+        },
+    )
+    result = compute_weighted_overall_confidence(envelope)
+    assert result > 0.8
+
+
+def test_missing_required_fields_force_review():
+    payload = {
+        "header": {
+            "utility_type": "electric",
+            "provider_name": "Xcel Energy",
+            "account_number": None,
+            "billing_period": {"start_date": "2026-01-01", "end_date": "2026-01-31"},
+            "due_date": "2026-02-15",
+        },
+        "usage": {"amount": 100.0, "unit": "kWh", "meter_readings": []},
+        "financials": {"total_amount_due": 60.0, "adjustments": []},
+        "line_items": [],
+    }
+    extracted = UtilityBillSchema.model_validate(payload)
+    envelope = type(
+        "Doc",
+        (),
+        {
+            "overall_confidence": 0.99,
+            "field_confidences": [FieldConfidence(field_name="header.account_number", confidence_score=0.99)],
+            "extracted": extracted,
+        },
+    )
+    assert has_missing_required_fields(envelope) is True
+    assert needs_human_review(envelope, threshold=0.75) is True

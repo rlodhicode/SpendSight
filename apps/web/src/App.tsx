@@ -3,6 +3,8 @@ import { Alert, Box } from "@mui/material";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { api } from "./api";
+import { AppJobPoller } from "./components/AppJobPoller";
+import { AppSnackbarHost } from "./components/AppSnackbarHost";
 import { AuthForm } from "./components/AuthForm";
 import { Layout } from "./components/Layout";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
@@ -57,11 +59,13 @@ function App() {
 
   return (
     <Layout isAuthed={isAuthed} onLogout={handleLogout}>
+      <AppJobPoller token={token} />
+      <AppSnackbarHost />
       <Routes>
         <Route path="/" element={<DashboardPage token={token} />} />
         <Route path="/analytics" element={<AnalyticsPage token={token} />} />
         <Route path="/bills" element={<BillsPage token={token} />} />
-        <Route path="/bills/:billId" element={<BillDetailPage token={token} />} />
+        <Route path="/bills/:billPublicId" element={<BillDetailPage token={token} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

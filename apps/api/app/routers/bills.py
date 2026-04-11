@@ -22,7 +22,14 @@ from ..schemas import (
     ReviewEditResponse,
     UploadResponse,
 )
-from ..services import download_storage_object, enqueue_job, redis_client, save_upload, set_job_status
+from ..services import (
+    download_storage_object,
+    enqueue_job,
+    next_public_id,
+    redis_client,
+    save_upload,
+    set_job_status,
+)
 
 router = APIRouter(prefix="/bills", tags=["bills"])
 
@@ -44,6 +51,7 @@ def upload_bill(
     storage_uri = save_upload(user.id, file)
 
     document = Document(
+        public_id=next_public_id(db, utility_type),
         user_id=user.id,
         filename=file.filename or "unknown",
         content_type=file.content_type,
@@ -76,6 +84,7 @@ def upload_bill(
 def _serialize_bill(row: BillRecord) -> BillRecordResponse:
     return BillRecordResponse(
         id=row.id,
+        public_id=row.public_id or row.id,
         utility_type=row.utility_type,
         provider_name=row.provider_name,
         account_number=row.account_number,
@@ -109,6 +118,7 @@ def _serialize_bill(row: BillRecord) -> BillRecordResponse:
 def _serialize_document(row: Document) -> DocumentMetadataResponse:
     return DocumentMetadataResponse(
         id=row.id,
+        public_id=row.public_id or row.id,
         filename=row.filename,
         content_type=row.content_type,
         utility_type=row.utility_type,
@@ -126,8 +136,15 @@ def _serialize_edit(row: BillReviewEdit) -> ReviewEditResponse:
     )
 
 
-def _get_bill_or_404(db: Session, user_id: str, bill_id: str) -> BillRecord:
-    bill = db.query(BillRecord).filter(BillRecord.id == bill_id, BillRecord.user_id == user_id).first()
+def _get_bill_or_404(db: Session, user_id: str, bill_identifier: str) -> BillRecord:
+    bill = (
+        db.query(BillRecord)
+        .filter(
+            BillRecord.user_id == user_id,
+            (BillRecord.id == bill_identifier) | (BillRecord.public_id == bill_identifier),
+        )
+        .first()
+    )
     if not bill:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")
     return bill
@@ -148,7 +165,7 @@ def _invalidate_analytics_cache(user_id: str) -> None:
 def list_bills(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    sort_by: Literal["billing_period_end", "total_amount_due", "provider_name", "extracted_at"] = "billing_period_end",
+    sort_by: Literal["billing_period_end", "total_amount_due", "provider_name", "extracted_at", "overall_confidence"] = "billing_period_end",
     sort_order: Literal["asc", "desc"] = "desc",
     utility_type: str | None = None,
     provider: str | None = None,
@@ -175,6 +192,7 @@ def list_bills(
         "total_amount_due": BillRecord.total_amount_due,
         "provider_name": BillRecord.provider_name,
         "extracted_at": BillRecord.extracted_at,
+        "overall_confidence": BillRecord.overall_confidence,
     }
     order_column = sort_map[sort_by]
     order_clause = asc(order_column) if sort_order == "asc" else desc(order_column)
@@ -197,7 +215,7 @@ def get_bill_detail(bill_id: str, db: Session = Depends(get_db), user: User = De
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill document not found")
     edits = (
         db.query(BillReviewEdit)
-        .filter(BillReviewEdit.bill_record_id == bill_id)
+        .filter(BillReviewEdit.bill_record_id == bill.id)
         .order_by(BillReviewEdit.edited_at.desc())
         .limit(50)
         .all()
@@ -250,7 +268,7 @@ def update_bill(
             review_status="reviewed",
         )
 
-    return get_bill_detail(bill_id=bill_id, db=db, user=user)
+    return get_bill_detail(bill_id=bill.public_id, db=db, user=user)
 
 
 @router.get("/{bill_id}/document")

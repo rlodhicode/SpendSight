@@ -8,13 +8,24 @@ from uuid import uuid4
 import redis
 from fastapi import UploadFile
 from google.cloud import storage
+from sqlalchemy.orm import Session
 
 from .config import settings
 from .events import ProcessingEvent
+from .models import UtilityIdSequence
 from .queueing import get_queue_publisher
 
 redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
 queue_publisher = get_queue_publisher(redis_client)
+
+UTILITY_PREFIX_MAP = {
+    "electric": "E",
+    "electricity": "E",
+    "water": "W",
+    "gas": "G",
+    "waste": "T",
+    "internet": "I",
+}
 
 
 class StorageClient:
@@ -98,6 +109,30 @@ def download_storage_object(storage_uri: str) -> tuple[bytes, str]:
 
 def enqueue_job(event: ProcessingEvent) -> None:
     queue_publisher.publish(event)
+
+
+def get_utility_prefix(utility_type: str | None) -> str:
+    if not utility_type:
+        return "U"
+    return UTILITY_PREFIX_MAP.get(utility_type.strip().lower(), "U")
+
+
+def next_public_id(db: Session, utility_type: str | None) -> str:
+    prefix = get_utility_prefix(utility_type)
+    sequence = (
+        db.query(UtilityIdSequence)
+        .filter(UtilityIdSequence.utility_prefix == prefix)
+        .with_for_update()
+        .first()
+    )
+    if not sequence:
+        sequence = UtilityIdSequence(utility_prefix=prefix, next_value=1)
+        db.add(sequence)
+        db.flush()
+    value = sequence.next_value
+    sequence.next_value += 1
+    db.flush()
+    return f"{prefix}{value:05d}"
 
 
 def set_job_status(

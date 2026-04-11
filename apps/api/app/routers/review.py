@@ -25,6 +25,7 @@ router = APIRouter(prefix="/review", tags=["review"])
 def _serialize_bill(row: BillRecord) -> BillRecordResponse:
     return BillRecordResponse(
         id=row.id,
+        public_id=row.public_id or row.id,
         utility_type=row.utility_type,
         provider_name=row.provider_name,
         account_number=row.account_number,
@@ -69,6 +70,7 @@ def review_queue(
     items = [
         ReviewQueueItemResponse(
             bill_id=row.id,
+            bill_public_id=row.public_id or row.id,
             user_id=row.user_id,
             provider_name=row.provider_name,
             utility_type=row.utility_type,
@@ -86,17 +88,24 @@ def review_queue(
 
 @router.get("/{bill_id}", response_model=ReviewDetailResponse)
 def review_detail(bill_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    bill = db.query(BillRecord).filter(BillRecord.id == bill_id, BillRecord.user_id == user.id).first()
+    bill = (
+        db.query(BillRecord)
+        .filter(
+            BillRecord.user_id == user.id,
+            (BillRecord.id == bill_id) | (BillRecord.public_id == bill_id),
+        )
+        .first()
+    )
     if not bill:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")
 
     confidences = (
         db.query(BillFieldConfidence)
-        .filter(BillFieldConfidence.bill_record_id == bill_id)
+        .filter(BillFieldConfidence.bill_record_id == bill.id)
         .order_by(BillFieldConfidence.created_at.asc())
         .all()
     )
-    edits = db.query(BillReviewEdit).filter(BillReviewEdit.bill_record_id == bill_id).order_by(BillReviewEdit.edited_at.desc()).all()
+    edits = db.query(BillReviewEdit).filter(BillReviewEdit.bill_record_id == bill.id).order_by(BillReviewEdit.edited_at.desc()).all()
 
     return ReviewDetailResponse(
         bill=_serialize_bill(bill),
@@ -130,13 +139,20 @@ def update_review(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    bill = db.query(BillRecord).filter(BillRecord.id == bill_id, BillRecord.user_id == user.id).first()
+    bill = (
+        db.query(BillRecord)
+        .filter(
+            BillRecord.user_id == user.id,
+            (BillRecord.id == bill_id) | (BillRecord.public_id == bill_id),
+        )
+        .first()
+    )
     if not bill:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")
 
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
-        return review_detail(bill_id=bill_id, db=db, user=user)
+        return review_detail(bill_id=bill.public_id, db=db, user=user)
 
     for field_name, new_value in updates.items():
         previous_value = getattr(bill, field_name)
@@ -186,4 +202,4 @@ def update_review(
             ),
         )
 
-    return review_detail(bill_id=bill_id, db=db, user=user)
+    return review_detail(bill_id=bill.public_id, db=db, user=user)

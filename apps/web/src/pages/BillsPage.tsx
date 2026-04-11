@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   FormControl,
   Grid,
   InputLabel,
   MenuItem,
+  Popover,
   Select,
   Table,
   TableBody,
@@ -16,14 +18,16 @@ import {
   TableHead,
   TablePagination,
   TableRow,
-  TableSortLabel,
   TextField,
   Typography,
 } from "@mui/material";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import SortIcon from "@mui/icons-material/Sort";
 import { useNavigate } from "react-router-dom";
 
-import { api } from "../api";
-import type { BillRecord, BillsSortBy, BillsSortOrder, PaginatedBillsResponse } from "../types";
+import { loadBills, setBillsSearchForm } from "../store/actions/billsActions";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import type { BillsSortBy, BillsSortOrder } from "../types";
 
 type BillsPageProps = {
   token: string;
@@ -33,55 +37,28 @@ const ROWS_PER_PAGE_OPTIONS = [10, 20, 50];
 
 export function BillsPage({ token }: BillsPageProps) {
   const navigate = useNavigate();
-  const [result, setResult] = useState<PaginatedBillsResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
-  const [sortBy, setSortBy] = useState<BillsSortBy>("billing_period_end");
-  const [sortOrder, setSortOrder] = useState<BillsSortOrder>("desc");
-  const [providerFilter, setProviderFilter] = useState("");
-  const [utilityFilter, setUtilityFilter] = useState("");
-  const [reviewStatusFilter, setReviewStatusFilter] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const dispatch = useAppDispatch();
+  const { result, loading, error, searchForm } = useAppSelector((state) => state.billsState);
+  const [filtersAnchorEl, setFiltersAnchorEl] = useState<HTMLElement | null>(null);
+  const [sortAnchorEl, setSortAnchorEl] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await api.getBills(token, {
-          page: page + 1,
-          page_size: pageSize,
-          sort_by: sortBy,
-          sort_order: sortOrder,
-          provider: providerFilter || undefined,
-          utility_type: utilityFilter || undefined,
-          review_status: reviewStatusFilter || undefined,
-          start_date: startDate || undefined,
-          end_date: endDate || undefined,
-        });
-        setResult(data);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    void load();
-  }, [token, page, pageSize, sortBy, sortOrder, providerFilter, utilityFilter, reviewStatusFilter, startDate, endDate]);
+    void dispatch(loadBills(token));
+  }, [
+    dispatch,
+    token,
+    searchForm.page,
+    searchForm.pageSize,
+    searchForm.sortBy,
+    searchForm.sortOrder,
+    searchForm.providerFilter,
+    searchForm.utilityFilter,
+    searchForm.reviewStatusFilter,
+    searchForm.startDate,
+    searchForm.endDate,
+  ]);
 
-  const handleSort = (field: BillsSortBy) => {
-    if (field === sortBy) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortBy(field);
-    setSortOrder("asc");
-  };
-
-  const rows: BillRecord[] = result?.items ?? [];
+  const rows = result?.items ?? [];
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -89,41 +66,67 @@ export function BillsPage({ token }: BillsPageProps) {
       {error ? <Alert severity="error">{error}</Alert> : null}
 
       <Card elevation={0}>
-        <CardContent>
+        <CardContent sx={{ display: "flex", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
+          <Typography variant="body2" color="text.secondary">
+            Use filters and sort options to refine your bill grid.
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<FilterListIcon />}
+              onClick={(event) => setFiltersAnchorEl(event.currentTarget)}
+            >
+              Filters
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<SortIcon />}
+              onClick={(event) => setSortAnchorEl(event.currentTarget)}
+            >
+              Sort
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
+
+      <Popover
+        open={Boolean(filtersAnchorEl)}
+        anchorEl={filtersAnchorEl}
+        onClose={() => setFiltersAnchorEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Box sx={{ p: 2, width: 420 }}>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Provider contains"
-                value={providerFilter}
-                onChange={(event) => {
-                  setPage(0);
-                  setProviderFilter(event.target.value);
-                }}
+                value={searchForm.providerFilter}
+                onChange={(event) =>
+                  dispatch(setBillsSearchForm({ page: 0, providerFilter: event.target.value }))
+                }
                 fullWidth
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Utility type"
-                value={utilityFilter}
-                onChange={(event) => {
-                  setPage(0);
-                  setUtilityFilter(event.target.value);
-                }}
+                value={searchForm.utilityFilter}
+                onChange={(event) =>
+                  dispatch(setBillsSearchForm({ page: 0, utilityFilter: event.target.value }))
+                }
                 fullWidth
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12}>
               <FormControl fullWidth>
                 <InputLabel id="review-status-filter-label">Review Status</InputLabel>
                 <Select
                   labelId="review-status-filter-label"
-                  value={reviewStatusFilter}
+                  value={searchForm.reviewStatusFilter}
                   label="Review Status"
-                  onChange={(event) => {
-                    setPage(0);
-                    setReviewStatusFilter(event.target.value);
-                  }}
+                  onChange={(event) =>
+                    dispatch(setBillsSearchForm({ page: 0, reviewStatusFilter: event.target.value }))
+                  }
                 >
                   <MenuItem value="">All</MenuItem>
                   <MenuItem value="needs_review">Needs Review</MenuItem>
@@ -136,11 +139,10 @@ export function BillsPage({ token }: BillsPageProps) {
               <TextField
                 label="Period End From"
                 type="date"
-                value={startDate}
-                onChange={(event) => {
-                  setPage(0);
-                  setStartDate(event.target.value);
-                }}
+                value={searchForm.startDate}
+                onChange={(event) =>
+                  dispatch(setBillsSearchForm({ page: 0, startDate: event.target.value }))
+                }
                 InputLabelProps={{ shrink: true }}
                 fullWidth
               />
@@ -149,18 +151,58 @@ export function BillsPage({ token }: BillsPageProps) {
               <TextField
                 label="Period End To"
                 type="date"
-                value={endDate}
-                onChange={(event) => {
-                  setPage(0);
-                  setEndDate(event.target.value);
-                }}
+                value={searchForm.endDate}
+                onChange={(event) =>
+                  dispatch(setBillsSearchForm({ page: 0, endDate: event.target.value }))
+                }
                 InputLabelProps={{ shrink: true }}
                 fullWidth
               />
             </Grid>
           </Grid>
-        </CardContent>
-      </Card>
+        </Box>
+      </Popover>
+
+      <Popover
+        open={Boolean(sortAnchorEl)}
+        anchorEl={sortAnchorEl}
+        onClose={() => setSortAnchorEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Box sx={{ p: 2, width: 320, display: "flex", flexDirection: "column", gap: 2 }}>
+          <FormControl fullWidth>
+            <InputLabel id="sort-field-label">Sort Field</InputLabel>
+            <Select
+              labelId="sort-field-label"
+              value={searchForm.sortBy}
+              label="Sort Field"
+              onChange={(event) =>
+                dispatch(setBillsSearchForm({ page: 0, sortBy: event.target.value as BillsSortBy }))
+              }
+            >
+              <MenuItem value="billing_period_end">Period End</MenuItem>
+              <MenuItem value="provider_name">Provider</MenuItem>
+              <MenuItem value="total_amount_due">Amount Due</MenuItem>
+              <MenuItem value="extracted_at">Extracted</MenuItem>
+              <MenuItem value="overall_confidence">Confidence</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel id="sort-direction-label">Direction</InputLabel>
+            <Select
+              labelId="sort-direction-label"
+              value={searchForm.sortOrder}
+              label="Direction"
+              onChange={(event) =>
+                dispatch(setBillsSearchForm({ page: 0, sortOrder: event.target.value as BillsSortOrder }))
+              }
+            >
+              <MenuItem value="asc">Ascending</MenuItem>
+              <MenuItem value="desc">Descending</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+      </Popover>
 
       <Card elevation={0}>
         <CardContent>
@@ -168,44 +210,14 @@ export function BillsPage({ token }: BillsPageProps) {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell sortDirection={sortBy === "provider_name" ? sortOrder : false}>
-                    <TableSortLabel
-                      active={sortBy === "provider_name"}
-                      direction={sortBy === "provider_name" ? sortOrder : "asc"}
-                      onClick={() => handleSort("provider_name")}
-                    >
-                      Provider
-                    </TableSortLabel>
-                  </TableCell>
+                  <TableCell>Bill ID</TableCell>
+                  <TableCell>Provider</TableCell>
                   <TableCell>Utility</TableCell>
-                  <TableCell sortDirection={sortBy === "billing_period_end" ? sortOrder : false}>
-                    <TableSortLabel
-                      active={sortBy === "billing_period_end"}
-                      direction={sortBy === "billing_period_end" ? sortOrder : "asc"}
-                      onClick={() => handleSort("billing_period_end")}
-                    >
-                      Period End
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell sortDirection={sortBy === "total_amount_due" ? sortOrder : false} align="right">
-                    <TableSortLabel
-                      active={sortBy === "total_amount_due"}
-                      direction={sortBy === "total_amount_due" ? sortOrder : "asc"}
-                      onClick={() => handleSort("total_amount_due")}
-                    >
-                      Amount Due
-                    </TableSortLabel>
-                  </TableCell>
+                  <TableCell>Period End</TableCell>
+                  <TableCell align="right">Amount Due</TableCell>
+                  <TableCell align="right">Confidence</TableCell>
                   <TableCell>Review Status</TableCell>
-                  <TableCell sortDirection={sortBy === "extracted_at" ? sortOrder : false}>
-                    <TableSortLabel
-                      active={sortBy === "extracted_at"}
-                      direction={sortBy === "extracted_at" ? sortOrder : "asc"}
-                      onClick={() => handleSort("extracted_at")}
-                    >
-                      Extracted
-                    </TableSortLabel>
-                  </TableCell>
+                  <TableCell>Extracted</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -213,20 +225,22 @@ export function BillsPage({ token }: BillsPageProps) {
                   <TableRow
                     key={row.id}
                     hover
-                    onClick={() => navigate(`/bills/${row.id}`)}
+                    onClick={() => navigate(`/bills/${row.public_id}`)}
                     sx={{ cursor: "pointer" }}
                   >
+                    <TableCell>{row.public_id}</TableCell>
                     <TableCell>{row.provider_name}</TableCell>
                     <TableCell>{row.utility_type}</TableCell>
                     <TableCell>{new Date(row.billing_period_end).toLocaleDateString()}</TableCell>
                     <TableCell align="right">${row.total_amount_due.toFixed(2)}</TableCell>
+                    <TableCell align="right">{Math.round((row.overall_confidence ?? row.confidence_score) * 100)}%</TableCell>
                     <TableCell>{row.review_status ?? "not_required"}</TableCell>
                     <TableCell>{new Date(row.extracted_at).toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
                 {!loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={8}>
                       <Typography variant="body2">No bills found for this filter set.</Typography>
                     </TableCell>
                   </TableRow>
@@ -237,12 +251,11 @@ export function BillsPage({ token }: BillsPageProps) {
           <TablePagination
             component="div"
             count={result?.total ?? 0}
-            page={page}
-            onPageChange={(_, newPage) => setPage(newPage)}
-            rowsPerPage={pageSize}
+            page={searchForm.page}
+            onPageChange={(_, newPage) => dispatch(setBillsSearchForm({ page: newPage }))}
+            rowsPerPage={searchForm.pageSize}
             onRowsPerPageChange={(event) => {
-              setPage(0);
-              setPageSize(Number(event.target.value));
+              dispatch(setBillsSearchForm({ page: 0, pageSize: Number(event.target.value) }));
             }}
             rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
           />

@@ -37,6 +37,7 @@ class JobStatusResponse(BaseModel):
 
 class BillRecordResponse(BaseModel):
     id: str
+    public_id: str
     utility_type: str
     provider_name: str
     account_number: Optional[str]
@@ -68,6 +69,7 @@ class BillRecordResponse(BaseModel):
 
 class DocumentMetadataResponse(BaseModel):
     id: str
+    public_id: str
     filename: str
     content_type: Optional[str] = None
     utility_type: str
@@ -118,6 +120,7 @@ class ReviewEditResponse(BaseModel):
 
 class ReviewQueueItemResponse(BaseModel):
     bill_id: str
+    bill_public_id: str
     user_id: str
     provider_name: str
     utility_type: str

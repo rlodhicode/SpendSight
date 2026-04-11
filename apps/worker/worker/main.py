@@ -15,7 +15,7 @@ from .events import ProcessingEvent
 from .llm_extractor import VertexGeminiExtractor
 from .object_storage import download_document
 from .queueing import PubSubQueueConsumer, RedisQueueConsumer, parse_pubsub_push
-from .review import needs_human_review
+from .review import compute_weighted_overall_confidence, has_missing_required_fields, needs_human_review
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("spendsight-worker")
@@ -58,6 +58,8 @@ def _field_value(extracted, field_name: str) -> Optional[str]:
     lookups = {
         "header.provider_name": extracted.header.provider_name,
         "header.account_number": extracted.header.account_number,
+        "header.utility_type": extracted.header.utility_type,
+        "header.due_date": extracted.header.due_date,
         "header.billing_period.start_date": extracted.header.billing_period.start_date,
         "header.billing_period.end_date": extracted.header.billing_period.end_date,
         "financials.total_amount_due": extracted.financials.total_amount_due,
@@ -83,6 +85,7 @@ def _upsert_bill_record(db, document: Document, extracted_doc, review_required: 
 
     bill = BillRecord(
         document_id=document.id,
+        public_id=document.public_id,
         user_id=document.user_id,
         utility_type=mapped_utility_type,
         provider_name=extracted.header.provider_name or "Unknown Provider",
@@ -146,7 +149,11 @@ def process_event(event: ProcessingEvent) -> str:
 
         file_bytes, filename = download_document(document.storage_uri)
         extracted_doc = extractor.extract(file_bytes, filename)
+        extracted_doc.overall_confidence = compute_weighted_overall_confidence(extracted_doc)
+        missing_required = has_missing_required_fields(extracted_doc)
         review_required = needs_human_review(extracted_doc, settings.extraction_confidence_threshold)
+        if missing_required:
+            review_required = True
         review_status = "needs_review" if review_required else "not_required"
         _upsert_bill_record(db, document, extracted_doc, review_required, review_status)
 

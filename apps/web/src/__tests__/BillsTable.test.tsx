@@ -11,6 +11,7 @@ const renderWithTheme = (ui: React.ReactElement) =>
 const MOCK_BILLS: BillRecord[] = [
   {
     id: "1",
+    public_id: "E00001",
     utility_type: "electricity",
     provider_name: "Xcel Energy",
     billing_period_start: "2026-01-01",
@@ -22,6 +23,7 @@ const MOCK_BILLS: BillRecord[] = [
   },
   {
     id: "2",
+    public_id: "W00001",
     utility_type: "water",
     provider_name: "Denver Water",
     billing_period_start: "2026-01-01",

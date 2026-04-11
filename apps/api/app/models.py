@@ -29,6 +29,7 @@ class Document(Base):
     __tablename__ = "documents"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    public_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     filename: Mapped[str] = mapped_column(String(255))
     content_type: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
@@ -58,6 +59,7 @@ class BillRecord(Base):
     __tablename__ = "bill_records"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    public_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), unique=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     utility_type: Mapped[str] = mapped_column(String(64), index=True)
@@ -115,6 +117,12 @@ class BillReviewEdit(Base):
     edited_by: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     edited_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
+
+class UtilityIdSequence(Base):
+    __tablename__ = "utility_id_sequences"
+
+    utility_prefix: Mapped[str] = mapped_column(String(2), primary_key=True)
+    next_value: Mapped[int] = mapped_column(default=1)
 
 
 

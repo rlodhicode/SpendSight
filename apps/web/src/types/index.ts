@@ -20,6 +20,7 @@ export type UploadResponse = {
 
 export type BillRecord = {
   id: string;
+  public_id: string;
   utility_type: string;
   provider_name: string;
   account_number?: string | null;
@@ -69,6 +70,7 @@ export type AnalyticsFilters = {
 
 export type ReviewQueueItem = {
   bill_id: string;
+  bill_public_id: string;
   user_id: string;
   provider_name: string;
   utility_type: string;
@@ -111,6 +113,7 @@ export type ReviewDetail = {
 
 export type DocumentMetadata = {
   id: string;
+  public_id: string;
   filename: string;
   content_type?: string | null;
   utility_type: string;
@@ -127,7 +130,8 @@ export type BillsSortBy =
   | "billing_period_end"
   | "total_amount_due"
   | "provider_name"
-  | "extracted_at";
+  | "extracted_at"
+  | "overall_confidence";
 
 export type BillsSortOrder = "asc" | "desc";
 

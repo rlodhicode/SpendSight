@@ -72,6 +72,7 @@ export const BillsTable: React.FC<BillsTableProps> = ({
             <Table size="small" aria-label="Recent bills">
               <TableHead>
                 <TableRow>
+                  <TableCell>Bill ID</TableCell>
                   <TableCell>Provider</TableCell>
                   <TableCell>Utility</TableCell>
                   <TableCell>Period End</TableCell>
@@ -84,7 +85,7 @@ export const BillsTable: React.FC<BillsTableProps> = ({
                 {loading
                   ? Array.from({ length: 4 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 6 }).map((_, j) => (
+                        {Array.from({ length: 7 }).map((_, j) => (
                           <TableCell key={j}>
                             <Skeleton variant="text" width="80%" />
                           </TableCell>
@@ -97,6 +98,11 @@ export const BillsTable: React.FC<BillsTableProps> = ({
                         className={styles.row}
                         data-testid="bill-row"
                       >
+                        <TableCell>
+                          <Typography variant="body2" className={styles.providerName}>
+                            {bill.public_id}
+                          </Typography>
+                        </TableCell>
                         <TableCell className={styles.providerCell}>
                           <Typography variant="body2" className={styles.providerName}>
                             {bill.provider_name}

@@ -9,6 +9,9 @@ import {
   CircularProgress,
   Divider,
   Grid,
+  List,
+  ListItem,
+  ListItemText,
   Stack,
   TextField,
   Typography,
@@ -16,69 +19,72 @@ import {
 import { useParams } from "react-router-dom";
 
 import { api } from "../api";
-import type { BillDetail, BillUpdateRequest } from "../types";
+import { loadBillDetail, saveBillDetail } from "../store/actions/billDetailActions";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import type { BillUpdateRequest } from "../types";
 
 type BillDetailPageProps = {
   token: string;
 };
 
+const REQUIRED_CONFIDENCE_FIELDS = [
+  "header.provider_name",
+  "header.billing_period.start_date",
+  "header.billing_period.end_date",
+  "financials.total_amount_due",
+  "header.utility_type",
+  "header.account_number",
+  "header.due_date",
+];
+
 export function BillDetailPage({ token }: BillDetailPageProps) {
-  const { billId } = useParams<{ billId: string }>();
-  const [detail, setDetail] = useState<BillDetail | null>(null);
+  const { billPublicId } = useParams<{ billPublicId: string }>();
+  const dispatch = useAppDispatch();
+  const { detail, fieldConfidences, loading, error } = useAppSelector((state) => state.billDetailState);
   const [form, setForm] = useState<BillUpdateRequest>({});
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [docUrl, setDocUrl] = useState<string | null>(null);
   const [docContentType, setDocContentType] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!billId) {
+    if (!billPublicId) {
       return;
     }
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [billDetail, documentPayload] = await Promise.all([
-          api.getBillDetail(token, billId),
-          api.getBillDocument(token, billId),
-        ]);
-        const nextUrl = URL.createObjectURL(documentPayload.blob);
-        setDetail(billDetail);
-        setForm({
-          provider_name: billDetail.bill.provider_name,
-          account_number: billDetail.bill.account_number ?? undefined,
-          utility_type: billDetail.bill.utility_type,
-          billing_period_start: billDetail.bill.billing_period_start,
-          billing_period_end: billDetail.bill.billing_period_end,
-          due_date: billDetail.bill.due_date ?? undefined,
-          total_amount_due: billDetail.bill.total_amount_due,
-          usage_amount: billDetail.bill.usage_amount ?? undefined,
-          usage_unit: billDetail.bill.usage_unit ?? undefined,
-          usage_kwh: billDetail.bill.usage_kwh ?? undefined,
-          usage_gallons: billDetail.bill.usage_gallons ?? undefined,
-          usage_therms: billDetail.bill.usage_therms ?? undefined,
-          previous_balance: billDetail.bill.previous_balance ?? undefined,
-          payments_credits: billDetail.bill.payments_credits ?? undefined,
-          current_charges: billDetail.bill.current_charges ?? undefined,
-        });
-        setDocUrl((previous) => {
-          if (previous) {
-            URL.revokeObjectURL(previous);
-          }
-          return nextUrl;
-        });
-        setDocContentType(documentPayload.contentType);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    void load();
+    dispatch(loadBillDetail(token, billPublicId));
+    api.getBillDocument(token, billPublicId).then((documentPayload) => {
+      const nextUrl = URL.createObjectURL(documentPayload.blob);
+      setDocUrl((previous) => {
+        if (previous) {
+          URL.revokeObjectURL(previous);
+        }
+        return nextUrl;
+      });
+      setDocContentType(documentPayload.contentType);
+    });
+  }, [dispatch, token, billPublicId]);
 
-  }, [token, billId]);
+  useEffect(() => {
+    if (!detail) {
+      return;
+    }
+    setForm({
+      provider_name: detail.bill.provider_name,
+      account_number: detail.bill.account_number ?? undefined,
+      utility_type: detail.bill.utility_type,
+      billing_period_start: detail.bill.billing_period_start,
+      billing_period_end: detail.bill.billing_period_end,
+      due_date: detail.bill.due_date ?? undefined,
+      total_amount_due: detail.bill.total_amount_due,
+      usage_amount: detail.bill.usage_amount ?? undefined,
+      usage_unit: detail.bill.usage_unit ?? undefined,
+      usage_kwh: detail.bill.usage_kwh ?? undefined,
+      usage_gallons: detail.bill.usage_gallons ?? undefined,
+      usage_therms: detail.bill.usage_therms ?? undefined,
+      previous_balance: detail.bill.previous_balance ?? undefined,
+      payments_credits: detail.bill.payments_credits ?? undefined,
+      current_charges: detail.bill.current_charges ?? undefined,
+    });
+  }, [detail]);
 
   useEffect(() => {
     return () => {
@@ -88,17 +94,64 @@ export function BillDetailPage({ token }: BillDetailPageProps) {
     };
   }, [docUrl]);
 
+  const requiredConfidenceRows = useMemo(
+    () =>
+      REQUIRED_CONFIDENCE_FIELDS.map((fieldName) => {
+        const confidence = fieldConfidences.find((row) => row.field_name === fieldName);
+        return {
+          fieldName,
+          score: confidence?.confidence_score ?? 0,
+          value: confidence?.field_value ?? null,
+          missing: !confidence?.field_value,
+        };
+      }),
+    [fieldConfidences]
+  );
+
+  const derivedOverall = useMemo(() => {
+    const weights: Record<string, number> = {
+      "header.provider_name": 20,
+      "header.billing_period.start_date": 15,
+      "header.billing_period.end_date": 15,
+      "financials.total_amount_due": 25,
+      "header.utility_type": 10,
+      "header.account_number": 5,
+      "header.due_date": 10,
+    };
+    const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+    if (!totalWeight) {
+      return 0;
+    }
+    const total = requiredConfidenceRows.reduce(
+      (sum, row) => sum + row.score * (weights[row.fieldName] ?? 0),
+      0
+    );
+    return Math.round((total / totalWeight) * 100);
+  }, [requiredConfidenceRows]);
+
+  const hasMissingRequired = requiredConfidenceRows.some((row) => row.missing);
+
   const renderDocument = useMemo(() => {
     if (!docUrl) {
       return <Typography variant="body2">No document available.</Typography>;
     }
     if (docContentType?.includes("pdf")) {
-      return <iframe src={docUrl} title="Bill Document" style={{ width: "100%", minHeight: 760, border: "none" }} />;
+      return (
+        <iframe
+          src={docUrl}
+          title="Bill Document"
+          style={{ width: "100%", height: "72vh", minHeight: 700, border: "none" }}
+        />
+      );
     }
     if (docContentType?.startsWith("image/")) {
       return (
-        <Box sx={{ textAlign: "center" }}>
-          <img src={docUrl} alt="Bill document" style={{ maxWidth: "100%", borderRadius: 12 }} />
+        <Box sx={{ textAlign: "center", height: "72vh", minHeight: 700, overflow: "auto" }}>
+          <img
+            src={docUrl}
+            alt="Bill document"
+            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 12 }}
+          />
         </Box>
       );
     }
@@ -114,20 +167,12 @@ export function BillDetailPage({ token }: BillDetailPageProps) {
     );
   }, [docUrl, docContentType, detail?.document.filename]);
 
-  const handleSave = async () => {
-    if (!billId) {
+  const handleSave = () => {
+    if (!billPublicId) {
       return;
     }
     setSaving(true);
-    setError(null);
-    try {
-      const updated = await api.updateBill(token, billId, form);
-      setDetail(updated);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setSaving(false);
-    }
+    dispatch(saveBillDetail(token, billPublicId, form)).finally(() => setSaving(false));
   };
 
   if (loading) {
@@ -139,26 +184,29 @@ export function BillDetailPage({ token }: BillDetailPageProps) {
     );
   }
 
-  if (!billId) {
+  if (!billPublicId) {
     return <Alert severity="error">Missing bill id.</Alert>;
   }
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {error ? <Alert severity="error">{error}</Alert> : null}
-      <Typography variant="h4">Bill Detail</Typography>
+      <Typography variant="h4">
+        Bill Detail {detail?.bill.public_id ? `- ${detail.bill.public_id}` : ""}
+      </Typography>
       <Grid container spacing={2} alignItems="stretch">
         <Grid item xs={12} md={5}>
           <Card elevation={0}>
             <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <Typography variant="h6">Extracted Fields</Typography>
-              <Stack direction="row" spacing={1}>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
                 <Chip size="small" label={detail?.bill.review_status ?? "not_required"} />
                 <Chip
                   size="small"
-                  color={detail?.bill.review_required ? "warning" : "success"}
-                  label={detail?.bill.review_required ? "Needs Review" : "Reviewed/OK"}
+                  color={hasMissingRequired || detail?.bill.review_required ? "warning" : "success"}
+                  label={hasMissingRequired || detail?.bill.review_required ? "Needs Review" : "Reviewed/OK"}
                 />
+                <Chip size="small" color="info" label={`Derived Confidence: ${derivedOverall}%`} />
               </Stack>
               <TextField
                 label="Provider Name"
@@ -218,56 +266,22 @@ export function BillDetailPage({ token }: BillDetailPageProps) {
                   }))
                 }
               />
-              <TextField
-                label="Usage Unit"
-                value={form.usage_unit ?? ""}
-                onChange={(event) => setForm((prev) => ({ ...prev, usage_unit: event.target.value }))}
-              />
-              <TextField
-                label="Previous Balance"
-                type="number"
-                value={form.previous_balance ?? ""}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    previous_balance: event.target.value === "" ? undefined : Number(event.target.value),
-                  }))
-                }
-              />
-              <TextField
-                label="Payments / Credits"
-                type="number"
-                value={form.payments_credits ?? ""}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    payments_credits: event.target.value === "" ? undefined : Number(event.target.value),
-                  }))
-                }
-              />
-              <TextField
-                label="Current Charges"
-                type="number"
-                value={form.current_charges ?? ""}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    current_charges: event.target.value === "" ? undefined : Number(event.target.value),
-                  }))
-                }
-              />
-
               <Button variant="contained" onClick={handleSave} disabled={saving}>
                 {saving ? "Saving..." : "Save Updates"}
               </Button>
 
               <Divider />
-              <Typography variant="subtitle2">Recent Edits</Typography>
-              {(detail?.edits ?? []).slice(0, 8).map((edit) => (
-                <Typography key={`${edit.field_name}-${edit.edited_at}`} variant="caption">
-                  {edit.field_name}: {edit.previous_value ?? "null"} → {edit.updated_value ?? "null"} ({new Date(edit.edited_at).toLocaleString()})
-                </Typography>
-              ))}
+              <Typography variant="subtitle2">Required Field Confidence</Typography>
+              <List dense>
+                {requiredConfidenceRows.map((row) => (
+                  <ListItem key={row.fieldName} sx={{ px: 0 }}>
+                    <ListItemText
+                      primary={row.fieldName}
+                      secondary={`${Math.round(row.score * 100)}%${row.missing ? " - Missing Value" : ""}`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
             </CardContent>
           </Card>
         </Grid>

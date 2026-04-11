@@ -16,7 +16,7 @@ interface ReviewQueueCardProps {
   items: ReviewQueueItem[];
   total: number;
   loading?: boolean;
-  onOpenReview: (billId: string) => void;
+  onOpenReview: (billPublicId: string) => void;
 }
 
 export const ReviewQueueCard: React.FC<ReviewQueueCardProps> = ({
@@ -60,7 +60,7 @@ export const ReviewQueueCard: React.FC<ReviewQueueCardProps> = ({
                   <Typography className={styles.subtle}>
                     {item.utility_type} - ${item.total_amount_due.toFixed(2)}
                   </Typography>
-                  <Button size="small" onClick={() => onOpenReview(item.bill_id)}>
+                  <Button size="small" onClick={() => onOpenReview(item.bill_public_id)}>
                     Review
                   </Button>
                 </Box>

@@ -53,7 +53,7 @@ export const BillsTable: React.FC<BillsTableProps> = ({
             </Typography>
           </Box>
           <Typography variant="caption" className={styles.count}>
-            {loading ? "…" : `${bills.length} record${bills.length !== 1 ? "s" : ""}`}
+            {loading ? "..." : `${bills.length} record${bills.length !== 1 ? "s" : ""}`}
           </Typography>
         </Box>
 

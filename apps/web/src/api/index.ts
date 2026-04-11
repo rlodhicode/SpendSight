@@ -1,8 +1,13 @@
 import type {
+  AnalyticsFilters,
   AnalyticsSummary,
   AuthResponse,
+  BillDetail,
   BillRecord,
+  BillUpdateRequest,
+  BillsListQuery,
   JobStatus,
+  PaginatedBillsResponse,
   ReviewDetail,
   ReviewQueueResponse,
   ReviewUpdateRequest,
@@ -49,6 +54,40 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function buildQueryString(params: Record<string, string | number | boolean | undefined>): string {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    searchParams.set(key, String(value));
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
+function buildAnalyticsQuery(filters: AnalyticsFilters = {}): string {
+  const params = new URLSearchParams();
+  const months = filters.months ?? 12;
+  params.set("months", String(months));
+  params.set(
+    "include_needs_review",
+    String(filters.include_needs_review ?? true)
+  );
+  filters.provider?.forEach((provider) => params.append("provider", provider));
+  filters.utility_type?.forEach((utility) =>
+    params.append("utility_type", utility)
+  );
+  if (filters.start_date) {
+    params.set("start_date", filters.start_date);
+  }
+  if (filters.end_date) {
+    params.set("end_date", filters.end_date);
+  }
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
 export const api = {
   register(email: string, password: string): Promise<AuthResponse> {
     return request<AuthResponse>("/api/v1/auth/register", {
@@ -79,16 +118,54 @@ export const api = {
   getJob(token: string, jobId: string): Promise<JobStatus> {
     return request<JobStatus>(`/api/v1/jobs/${jobId}`, { token });
   },
-  getSummary(token: string, includeNeedsReview = true): Promise<AnalyticsSummary> {
-    return request<AnalyticsSummary>(
-      `/api/v1/analytics/summary?months=12&include_needs_review=${includeNeedsReview}`,
-      {
-        token,
-      }
+  getSummary(token: string, filters: AnalyticsFilters = {}): Promise<AnalyticsSummary> {
+    return request<AnalyticsSummary>(`/api/v1/analytics/summary${buildAnalyticsQuery(filters)}`, {
+      token,
+    });
+  },
+  getBills(token: string, query: BillsListQuery = {}): Promise<PaginatedBillsResponse> {
+    return request<PaginatedBillsResponse>(
+      `/api/v1/bills${buildQueryString({
+        page: query.page ?? 1,
+        page_size: query.page_size ?? 20,
+        sort_by: query.sort_by ?? "billing_period_end",
+        sort_order: query.sort_order ?? "desc",
+        utility_type: query.utility_type,
+        provider: query.provider,
+        review_status: query.review_status,
+        start_date: query.start_date,
+        end_date: query.end_date,
+      })}`,
+      { token }
     );
   },
-  getBills(token: string): Promise<BillRecord[]> {
-    return request<BillRecord[]>("/api/v1/bills", { token });
+  getBillDetail(token: string, billId: string): Promise<BillDetail> {
+    return request<BillDetail>(`/api/v1/bills/${billId}`, { token });
+  },
+  updateBill(token: string, billId: string, payload: BillUpdateRequest): Promise<BillDetail> {
+    return request<BillDetail>(`/api/v1/bills/${billId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    });
+  },
+  async getBillDocument(token: string, billId: string): Promise<{ blob: Blob; contentType: string | null }> {
+    const response = await fetch(`${API_BASE}/api/v1/bills/${billId}/document`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      let detail = "Request failed";
+      try {
+        const payload = await response.json();
+        detail = payload.detail ?? detail;
+      } catch {
+        // ignore parse errors
+      }
+      throw new Error(detail);
+    }
+    return { blob: await response.blob(), contentType: response.headers.get("content-type") };
   },
   getReviewQueue(token: string, page = 1, pageSize = 20): Promise<ReviewQueueResponse> {
     return request<ReviewQueueResponse>(`/api/v1/review/queue?page=${page}&page_size=${pageSize}`, {

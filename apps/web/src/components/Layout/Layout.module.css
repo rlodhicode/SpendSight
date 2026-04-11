@@ -41,6 +41,33 @@
   letter-spacing: -0.3px;
 }
 
+.rightControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+}
+
+.navLink {
+  text-decoration: none;
+  color: #4a6072 !important;
+  border-radius: 10px !important;
+  border: 1px solid transparent;
+  padding: 6px 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.navLinkActive {
+  color: #1b4f72 !important;
+  background: rgba(46, 134, 193, 0.12) !important;
+  border-color: #b7d7ed;
+}
+
 .logoutBtn {
   color: #4a6072 !important;
   border: 1px solid #d5e3ee !important;
@@ -67,10 +94,16 @@
 @media (max-width: 600px) {
   .toolbar {
     padding: 0 16px !important;
+    gap: 8px;
   }
 
   .container {
     padding-top: 20px !important;
     padding-bottom: 32px !important;
+  }
+
+  .navLink {
+    font-size: 0.75rem !important;
+    padding: 4px 8px;
   }
 }

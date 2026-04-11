@@ -62,6 +62,40 @@ def save_upload(user_id: str, upload: UploadFile) -> str:
     return storage_client.upload(user_id, upload)
 
 
+def _download_from_gcs(uri: str) -> tuple[bytes, str]:
+    if not uri.startswith("gs://"):
+        raise ValueError(f"Expected gs:// URI, received: {uri}")
+    body = uri[5:]
+    bucket_name, _, key = body.partition("/")
+    if not bucket_name or not key:
+        raise ValueError(f"Invalid GCS URI: {uri}")
+
+    client = storage.Client(project=settings.gcp_project_id or None)
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(key)
+    data = blob.download_as_bytes()
+    filename = Path(key).name
+    return data, filename
+
+
+def _download_from_local(uri: str) -> tuple[bytes, str]:
+    if not uri.startswith("local://"):
+        raise ValueError(f"Expected local:// URI, received: {uri}")
+    key = uri.replace("local://", "", 1)
+    path = Path(settings.upload_dir) / key
+    if not path.exists():
+        raise FileNotFoundError(f"Local object not found: {key}")
+    return path.read_bytes(), path.name
+
+
+def download_storage_object(storage_uri: str) -> tuple[bytes, str]:
+    if storage_uri.startswith("gs://"):
+        return _download_from_gcs(storage_uri)
+    if storage_uri.startswith("local://"):
+        return _download_from_local(storage_uri)
+    raise ValueError(f"Unsupported storage URI: {storage_uri}")
+
+
 def enqueue_job(event: ProcessingEvent) -> None:
     queue_publisher.publish(event)
 

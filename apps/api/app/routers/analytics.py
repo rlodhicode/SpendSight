@@ -1,8 +1,8 @@
 import json
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -19,18 +19,35 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 def summary(
     months: int = 12,
     include_needs_review: bool = True,
+    provider: list[str] | None = Query(default=None),
+    utility_type: list[str] | None = Query(default=None),
+    start_date: date | None = None,
+    end_date: date | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    cache_key = f"analytics:{user.id}:{months}:{include_needs_review}"
+    provider_key = ",".join(sorted(provider or []))
+    utility_key = ",".join(sorted(utility_type or []))
+    start_key = start_date.isoformat() if start_date else "none"
+    end_key = end_date.isoformat() if end_date else "none"
+    cache_key = (
+        f"analytics:{user.id}:{months}:{include_needs_review}:"
+        f"{provider_key}:{utility_key}:{start_key}:{end_key}"
+    )
     cached = redis_client.get(cache_key)
     if cached:
         return AnalyticsSummaryResponse(**json.loads(cached))
 
-    cutoff = datetime.utcnow().date() - timedelta(days=30 * months)
-    query = db.query(BillRecord).filter(BillRecord.user_id == user.id, BillRecord.billing_period_end >= cutoff)
+    effective_start = start_date or (datetime.utcnow().date() - timedelta(days=30 * months))
+    query = db.query(BillRecord).filter(BillRecord.user_id == user.id, BillRecord.billing_period_end >= effective_start)
+    if end_date:
+        query = query.filter(BillRecord.billing_period_end <= end_date)
     if not include_needs_review:
         query = query.filter(BillRecord.review_status != "needs_review")
+    if provider:
+        query = query.filter(BillRecord.provider_name.in_(provider))
+    if utility_type:
+        query = query.filter(BillRecord.utility_type.in_(utility_type))
     rows = query.order_by(BillRecord.billing_period_end.asc()).all()
 
     by_month: dict[str, float] = defaultdict(float)

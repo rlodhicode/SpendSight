@@ -66,6 +66,21 @@ class BillRecordResponse(BaseModel):
     extracted_at: datetime
 
 
+class DocumentMetadataResponse(BaseModel):
+    id: str
+    filename: str
+    content_type: Optional[str] = None
+    utility_type: str
+    uploaded_at: datetime
+
+
+class PaginatedBillsResponse(BaseModel):
+    items: list[BillRecordResponse]
+    total: int
+    page: int
+    page_size: int
+
+
 class MonthlyTotal(BaseModel):
     month: str
     total: float
@@ -125,6 +140,30 @@ class ReviewDetailResponse(BaseModel):
     bill: BillRecordResponse
     field_confidences: list[FieldConfidenceResponse]
     edits: list[ReviewEditResponse]
+
+
+class BillDetailResponse(BaseModel):
+    bill: BillRecordResponse
+    document: DocumentMetadataResponse
+    edits: list[ReviewEditResponse]
+
+
+class BillUpdateRequest(BaseModel):
+    provider_name: Optional[str] = None
+    account_number: Optional[str] = None
+    utility_type: Optional[str] = None
+    billing_period_start: Optional[date] = None
+    billing_period_end: Optional[date] = None
+    due_date: Optional[date] = None
+    total_amount_due: Optional[float] = None
+    usage_amount: Optional[float] = None
+    usage_unit: Optional[str] = None
+    usage_kwh: Optional[float] = None
+    usage_gallons: Optional[float] = None
+    usage_therms: Optional[float] = None
+    previous_balance: Optional[float] = None
+    payments_credits: Optional[float] = None
+    current_charges: Optional[float] = None
 
 
 class ReviewUpdateRequest(BaseModel):

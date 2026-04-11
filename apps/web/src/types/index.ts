@@ -58,6 +58,15 @@ export type AnalyticsSummary = {
   totals_by_utility: { name: string; total: number }[];
 };
 
+export type AnalyticsFilters = {
+  months?: number;
+  include_needs_review?: boolean;
+  provider?: string[];
+  utility_type?: string[];
+  start_date?: string;
+  end_date?: string;
+};
+
 export type ReviewQueueItem = {
   bill_id: string;
   user_id: string;
@@ -99,6 +108,68 @@ export type ReviewDetail = {
   field_confidences: FieldConfidence[];
   edits: ReviewEdit[];
 };
+
+export type DocumentMetadata = {
+  id: string;
+  filename: string;
+  content_type?: string | null;
+  utility_type: string;
+  uploaded_at: string;
+};
+
+export type BillDetail = {
+  bill: BillRecord;
+  document: DocumentMetadata;
+  edits: ReviewEdit[];
+};
+
+export type BillsSortBy =
+  | "billing_period_end"
+  | "total_amount_due"
+  | "provider_name"
+  | "extracted_at";
+
+export type BillsSortOrder = "asc" | "desc";
+
+export type BillsListQuery = {
+  page?: number;
+  page_size?: number;
+  sort_by?: BillsSortBy;
+  sort_order?: BillsSortOrder;
+  utility_type?: string;
+  provider?: string;
+  review_status?: string;
+  start_date?: string;
+  end_date?: string;
+};
+
+export type PaginatedBillsResponse = {
+  items: BillRecord[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
+export type BillUpdateRequest = Partial<
+  Pick<
+    BillRecord,
+    | "provider_name"
+    | "account_number"
+    | "utility_type"
+    | "billing_period_start"
+    | "billing_period_end"
+    | "due_date"
+    | "total_amount_due"
+    | "usage_amount"
+    | "usage_unit"
+    | "usage_kwh"
+    | "usage_gallons"
+    | "usage_therms"
+    | "previous_balance"
+    | "payments_credits"
+    | "current_charges"
+  >
+>;
 
 export type ReviewUpdateRequest = Partial<
   Pick<

@@ -59,7 +59,6 @@ export function BillsPage({ token }: BillsPageProps) {
         display: "flex",
         flexDirection: "column",
         height: "calc(100vh - 64px)",
-        overflow: "hidden",
       }}
     >
       {/* Page header bar */}
@@ -75,7 +74,10 @@ export function BillsPage({ token }: BillsPageProps) {
           background: "#fff",
         }}
       >
-        <Typography variant="h5" sx={{ fontWeight: 700, color: "#1A2533" }}>
+        <Typography
+          variant="h5"
+          sx={{ fontWeight: 700, color: "#1A2533", pr: 5 }}
+        >
           Bills
         </Typography>
         <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
@@ -282,7 +284,6 @@ export function BillsPage({ token }: BillsPageProps) {
       <Box
         sx={{
           flex: 1,
-          overflow: "hidden",
           display: "flex",
           flexDirection: "column",
         }}

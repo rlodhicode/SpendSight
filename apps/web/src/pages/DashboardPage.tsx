@@ -91,7 +91,14 @@ export function DashboardPage({ token }: DashboardPageProps) {
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 3,
+        pb: "48px",
+      }}
+    >
       {error ? <Alert severity="error">{error}</Alert> : null}
 
       {/* Stat cards */}
@@ -113,6 +120,7 @@ export function DashboardPage({ token }: DashboardPageProps) {
             icon={<TrendingUpIcon />}
             color="secondary"
             loading={dataLoading}
+            subtitle="Last 12 months"
           />
         </Grid>
         <Grid item xs={12} sm={4}>
@@ -122,6 +130,7 @@ export function DashboardPage({ token }: DashboardPageProps) {
             icon={<ReceiptIcon />}
             color="success"
             loading={dataLoading}
+            subtitle="Last 12 months"
           />
         </Grid>
       </Grid>

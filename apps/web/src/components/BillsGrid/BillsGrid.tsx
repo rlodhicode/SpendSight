@@ -288,7 +288,6 @@ export function BillsGrid({
               sx={{
                 borderBottomLeftRadius: 20,
                 borderBottomRightRadius: 20,
-                overflow: "hidden",
                 border: "1px solid #EEF3F8",
               }}
             >

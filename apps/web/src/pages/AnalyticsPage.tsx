@@ -34,7 +34,14 @@ type AnalyticsPageProps = {
   token: string;
 };
 
-const PIE_COLORS = ["#1B4F72", "#17A589", "#D68910", "#2E86C1", "#6C7A89", "#8E44AD"];
+const PIE_COLORS = [
+  "#1B4F72",
+  "#17A589",
+  "#D68910",
+  "#2E86C1",
+  "#6C7A89",
+  "#8E44AD",
+];
 
 export function AnalyticsPage({ token }: AnalyticsPageProps) {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
@@ -69,19 +76,27 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
     };
 
     void load();
-  }, [token, months, includeNeedsReview, providerFilter, utilityFilter, startDate, endDate]);
+  }, [
+    token,
+    months,
+    includeNeedsReview,
+    providerFilter,
+    utilityFilter,
+    startDate,
+    endDate,
+  ]);
 
   const providerOptions = useMemo(
     () => (summary?.totals_by_provider ?? []).map((item) => item.name),
-    [summary]
+    [summary],
   );
   const utilityOptions = useMemo(
     () => (summary?.totals_by_utility ?? []).map((item) => item.name),
-    [summary]
+    [summary],
   );
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, pb: "48px" }}>
       <Typography variant="h4">Analytics</Typography>
       {error ? <Alert severity="error">{error}</Alert> : null}
 
@@ -164,9 +179,13 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Switch
                   checked={includeNeedsReview}
-                  onChange={(event) => setIncludeNeedsReview(event.target.checked)}
+                  onChange={(event) =>
+                    setIncludeNeedsReview(event.target.checked)
+                  }
                 />
-                <Typography variant="body2">Include bills that still need review</Typography>
+                <Typography variant="body2">
+                  Include bills that still need review
+                </Typography>
               </Box>
             </Grid>
           </Grid>
@@ -192,9 +211,14 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
                       outerRadius={110}
                       label
                     >
-                      {(summary?.totals_by_provider ?? []).map((entry, index) => (
-                        <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
+                      {(summary?.totals_by_provider ?? []).map(
+                        (entry, index) => (
+                          <Cell
+                            key={entry.name}
+                            fill={PIE_COLORS[index % PIE_COLORS.length]}
+                          />
+                        ),
+                      )}
                     </Pie>
                     <Tooltip />
                     <Legend />
@@ -222,9 +246,14 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
                       outerRadius={110}
                       label
                     >
-                      {(summary?.totals_by_utility ?? []).map((entry, index) => (
-                        <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
+                      {(summary?.totals_by_utility ?? []).map(
+                        (entry, index) => (
+                          <Cell
+                            key={entry.name}
+                            fill={PIE_COLORS[index % PIE_COLORS.length]}
+                          />
+                        ),
+                      )}
                     </Pie>
                     <Tooltip />
                     <Legend />
@@ -249,14 +278,21 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="total" stroke="#1B4F72" strokeWidth={3} />
+                <Line
+                  type="monotone"
+                  dataKey="total"
+                  stroke="#1B4F72"
+                  strokeWidth={3}
+                />
               </LineChart>
             </ResponsiveContainer>
           </Box>
         </CardContent>
       </Card>
 
-      {loading ? <Typography variant="body2">Loading analytics...</Typography> : null}
+      {loading ? (
+        <Typography variant="body2">Loading analytics...</Typography>
+      ) : null}
     </Box>
   );
 }

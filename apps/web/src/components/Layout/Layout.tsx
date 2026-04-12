@@ -95,7 +95,6 @@ export const Layout: React.FC<LayoutProps> = ({
         component="main"
         sx={{
           flex: 1,
-          overflow: "hidden",
           display: "flex",
           flexDirection: "column",
         }}
@@ -105,7 +104,6 @@ export const Layout: React.FC<LayoutProps> = ({
           <Box
             sx={{
               flex: 1,
-              overflow: "hidden",
               display: "flex",
               flexDirection: "column",
             }}

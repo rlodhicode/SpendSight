@@ -45,7 +45,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: docker-dev-secret
       UPLOAD_DIR: /data/uploads
-      CORS_ORIGINS: http://localhost:5173
+      CORS_ORIGINS: http://localhost:5173, http://localhost:5174
       QUEUE_NAME: bill-jobs
       QUEUE_PROVIDER: pubsub
       PUBSUB_TOPIC: bill-jobs

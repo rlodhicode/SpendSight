@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
-import {
-  Alert,
-  Box,
-  Button,
-  Grid,
-} from "@mui/material";
+import { Alert, Box, Button, Grid } from "@mui/material";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import ReceiptIcon from "@mui/icons-material/Receipt";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 
 import { api } from "../api";
-import { BillsTable } from "../components/BillsTable";
+import { BillsGrid } from "../components/BillsGrid";
 import { ProviderList } from "../components/ProviderList";
 import { ReviewQueueCard } from "../components/ReviewQueueCard";
 import { SpendChart } from "../components/Chart";
@@ -51,7 +46,12 @@ export function DashboardPage({ token }: DashboardPageProps) {
     setReviewLoading(true);
     return Promise.all([
       api.getSummary(activeToken, { months: 12, include_needs_review: true }),
-      api.getBills(activeToken, { page: 1, page_size: 8, sort_by: "billing_period_end", sort_order: "desc" }),
+      api.getBills(activeToken, {
+        page: 1,
+        page_size: 8,
+        sort_by: "billing_period_end",
+        sort_order: "desc",
+      }),
       api.getReviewQueue(activeToken, 1, 5),
     ])
       .then(([summaryResult, billsResult, reviewQueue]) => {
@@ -79,7 +79,7 @@ export function DashboardPage({ token }: DashboardPageProps) {
           trackJob({
             job_id: upload.job_id,
             status: upload.status as JobStatus["status"],
-          })
+          }),
         );
       })
       .catch((uploadError: Error) => {
@@ -94,6 +94,7 @@ export function DashboardPage({ token }: DashboardPageProps) {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {error ? <Alert severity="error">{error}</Alert> : null}
 
+      {/* Stat cards */}
       <Grid container spacing={2}>
         <Grid item xs={12} sm={4}>
           <StatCard
@@ -125,6 +126,7 @@ export function DashboardPage({ token }: DashboardPageProps) {
         </Grid>
       </Grid>
 
+      {/* Upload + Provider / Review queue */}
       <Grid container spacing={2} alignItems="stretch">
         <Grid item xs={12} md={6}>
           <UploadCard
@@ -133,7 +135,12 @@ export function DashboardPage({ token }: DashboardPageProps) {
             error={error}
           />
         </Grid>
-        <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Grid
+          item
+          xs={12}
+          md={6}
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+        >
           <ProviderList
             providers={summary?.totals_by_provider ?? []}
             totalSpend={summary?.total_spend ?? 0}
@@ -148,17 +155,29 @@ export function DashboardPage({ token }: DashboardPageProps) {
         </Grid>
       </Grid>
 
+      {/* Monthly spend chart */}
       <SpendChart
         monthlyTotals={summary?.totals_by_month ?? []}
         loading={dataLoading}
       />
 
-      <BillsTable bills={bills} loading={dataLoading} />
-      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-        <Button component={RouterLink} to="/bills" variant="outlined">
-          View All Bills
-        </Button>
-      </Box>
+      {/* Recent bills — card mode with icon header, same grid, View All top-right */}
+      <BillsGrid
+        bills={bills}
+        loading={dataLoading}
+        asCard
+        headerAction={
+          <Button
+            component={RouterLink}
+            to="/bills"
+            variant="outlined"
+            size="small"
+            sx={{ borderColor: "#C8D8E8", color: "#4A6072" }}
+          >
+            View All
+          </Button>
+        }
+      />
     </Box>
   );
 }

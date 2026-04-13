@@ -11,12 +11,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableSortLabel,
   Typography,
 } from "@mui/material";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import { useNavigate } from "react-router-dom";
 
-import type { BillRecord } from "../../types";
+import type { BillRecord, BillsSortBy, BillsSortOrder } from "../../types";
 import {
   UTILITY_COLORS,
   UTILITY_LABELS,
@@ -27,17 +28,15 @@ import {
 interface BillsGridProps {
   bills: BillRecord[];
   loading?: boolean;
-  /**
-   * When true the table is rendered inside a Card with a header (ReceiptLong
-   * icon, title, record count) — used by DashboardPage's "Recent Bills" card.
-   * When false the raw table fills its container — used by the full BillsPage.
-   */
   asCard?: boolean;
-  /** Slot rendered to the right of the card header title (e.g. "View All" button) */
   headerAction?: React.ReactNode;
-  /** Whether the table should use stickyHeader (useful when embedded in a
-   *  scrollable full-height container). */
   stickyHeader?: boolean;
+  /** Active sort field — only used in non-card (full page) mode */
+  sortBy?: BillsSortBy;
+  /** Active sort direction */
+  sortOrder?: BillsSortOrder;
+  /** Called when a sortable column header is clicked */
+  onSortChange?: (field: BillsSortBy) => void;
 }
 
 const SKELETON_ROWS = 4;
@@ -72,16 +71,71 @@ function ReviewStatusChip({ status }: { status: string }) {
   );
 }
 
+type SortableColumn = {
+  id: BillsSortBy;
+  label: string;
+  align?: "left" | "right";
+};
+
+const SORTABLE_COLUMNS: SortableColumn[] = [
+  { id: "billing_period_end", label: "Period End" },
+  { id: "total_amount_due", label: "Amount Due", align: "right" },
+  { id: "overall_confidence", label: "Confidence", align: "right" },
+  { id: "extracted_at", label: "Extracted" },
+];
+
+const SORTABLE_IDS = new Set<string>(SORTABLE_COLUMNS.map((c) => c.id));
+
 function BillTableContent({
   bills,
   loading,
   stickyHeader,
+  sortBy,
+  sortOrder,
+  onSortChange,
 }: {
   bills: BillRecord[];
   loading: boolean;
   stickyHeader: boolean;
+  sortBy?: BillsSortBy;
+  sortOrder?: BillsSortOrder;
+  onSortChange?: (field: BillsSortBy) => void;
 }) {
   const navigate = useNavigate();
+
+  const renderHeaderCell = (
+    label: string,
+    fieldId?: BillsSortBy,
+    align: "left" | "right" = "left",
+  ) => {
+    if (!fieldId || !onSortChange || !SORTABLE_IDS.has(fieldId)) {
+      return (
+        <TableCell align={align} key={label}>
+          {label}
+        </TableCell>
+      );
+    }
+    const isActive = sortBy === fieldId;
+    return (
+      <TableCell
+        key={fieldId}
+        align={align}
+        sortDirection={isActive ? sortOrder : false}
+      >
+        <TableSortLabel
+          active={isActive}
+          direction={isActive ? sortOrder : "desc"}
+          onClick={() => onSortChange(fieldId)}
+          sx={{
+            "& .MuiTableSortLabel-icon": { opacity: isActive ? 1 : 0.3 },
+            "&:hover .MuiTableSortLabel-icon": { opacity: 0.7 },
+          }}
+        >
+          {label}
+        </TableSortLabel>
+      </TableCell>
+    );
+  };
 
   return (
     <TableContainer sx={{ flex: 1, overflow: "auto" }}>
@@ -91,9 +145,9 @@ function BillTableContent({
             <TableCell>Bill ID</TableCell>
             <TableCell>Provider</TableCell>
             <TableCell>Utility</TableCell>
-            <TableCell>Period End</TableCell>
-            <TableCell align="right">Amount Due</TableCell>
-            <TableCell align="right">Confidence</TableCell>
+            {renderHeaderCell("Period End", "billing_period_end")}
+            {renderHeaderCell("Amount Due", "total_amount_due", "right")}
+            {renderHeaderCell("Confidence", "overall_confidence", "right")}
             <TableCell>Review Status</TableCell>
           </TableRow>
         </TableHead>
@@ -208,6 +262,9 @@ export function BillsGrid({
   asCard = false,
   headerAction,
   stickyHeader = false,
+  sortBy,
+  sortOrder,
+  onSortChange,
 }: BillsGridProps) {
   if (asCard) {
     return (
@@ -217,7 +274,6 @@ export function BillsGrid({
         data-testid="bills-grid-card"
       >
         <CardContent sx={{ p: "28px !important" }}>
-          {/* Card header row */}
           <Box
             sx={{
               display: "flex",
@@ -254,7 +310,6 @@ export function BillsGrid({
             {headerAction}
           </Box>
 
-          {/* Empty state (card mode only) */}
           {!loading && bills.length === 0 ? (
             <Box
               data-testid="bills-empty"
@@ -303,12 +358,14 @@ export function BillsGrid({
     );
   }
 
-  // Raw table mode — fills its container (used inside BillsPage's flex layout)
   return (
     <BillTableContent
       bills={bills}
       loading={loading}
       stickyHeader={stickyHeader}
+      sortBy={sortBy}
+      sortOrder={sortOrder}
+      onSortChange={onSortChange}
     />
   );
 }

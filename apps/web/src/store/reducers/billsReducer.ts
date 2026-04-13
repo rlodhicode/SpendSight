@@ -9,7 +9,8 @@ export type BillsSearchForm = {
   pageSize: number;
   sortBy: BillsSortBy;
   sortOrder: BillsSortOrder;
-  providerFilter: string;
+  /** Free-text search: matched against public_id prefix or provider name */
+  searchQuery: string;
   utilityFilter: string;
   reviewStatusFilter: string;
   startDate: string;
@@ -28,7 +29,7 @@ export const DEFAULT_BILLS_SEARCH_FORM: BillsSearchForm = {
   pageSize: 10,
   sortBy: "billing_period_end",
   sortOrder: "desc",
-  providerFilter: "",
+  searchQuery: "",
   utilityFilter: "",
   reviewStatusFilter: "",
   startDate: "",
@@ -48,7 +49,10 @@ export type BillsAction =
   | { type: "bills/loadSuccess"; payload: PaginatedBillsResponse }
   | { type: "bills/loadError"; payload: string };
 
-export function billsReducer(state: BillsState = INITIAL_STATE, action: BillsAction): BillsState {
+export function billsReducer(
+  state: BillsState = INITIAL_STATE,
+  action: BillsAction,
+): BillsState {
   switch (action.type) {
     case "bills/setSearchForm":
       return {
@@ -59,23 +63,11 @@ export function billsReducer(state: BillsState = INITIAL_STATE, action: BillsAct
         },
       };
     case "bills/loadStart":
-      return {
-        ...state,
-        loading: true,
-        error: null,
-      };
+      return { ...state, loading: true, error: null };
     case "bills/loadSuccess":
-      return {
-        ...state,
-        loading: false,
-        result: action.payload,
-      };
+      return { ...state, loading: false, result: action.payload };
     case "bills/loadError":
-      return {
-        ...state,
-        loading: false,
-        error: action.payload,
-      };
+      return { ...state, loading: false, error: action.payload };
     default:
       return state;
   }

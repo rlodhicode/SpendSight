@@ -1,22 +1,27 @@
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Badge,
   Box,
   Button,
   FormControl,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Popover,
   Select,
   TablePagination,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import SortIcon from "@mui/icons-material/Sort";
+import SearchIcon from "@mui/icons-material/Search";
 
 import { loadBills, setBillsSearchForm } from "../store/actions/billsActions";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { DEFAULT_BILLS_SEARCH_FORM } from "../store/reducers/billsReducer";
 import type { BillsSortBy, BillsSortOrder } from "../types";
 import { BillsGrid } from "../components/BillsGrid";
 import { ROWS_PER_PAGE_OPTIONS } from "../constants/billConstants";
@@ -44,7 +49,7 @@ export function BillsPage({ token }: BillsPageProps) {
     searchForm.pageSize,
     searchForm.sortBy,
     searchForm.sortOrder,
-    searchForm.providerFilter,
+    searchForm.searchQuery,
     searchForm.utilityFilter,
     searchForm.reviewStatusFilter,
     searchForm.startDate,
@@ -52,6 +57,36 @@ export function BillsPage({ token }: BillsPageProps) {
   ]);
 
   const rows = result?.items ?? [];
+
+  const handleSortChange = (field: BillsSortBy) => {
+    if (searchForm.sortBy === field) {
+      dispatch(
+        setBillsSearchForm({
+          sortOrder: searchForm.sortOrder === "asc" ? "desc" : "asc",
+          page: 0,
+        }),
+      );
+    } else {
+      dispatch(
+        setBillsSearchForm({ sortBy: field, sortOrder: "desc", page: 0 }),
+      );
+    }
+  };
+
+  // Count active filters (excluding defaults)
+  const activeFilterCount = [
+    searchForm.utilityFilter !== DEFAULT_BILLS_SEARCH_FORM.utilityFilter,
+    searchForm.reviewStatusFilter !==
+      DEFAULT_BILLS_SEARCH_FORM.reviewStatusFilter,
+    searchForm.startDate !== DEFAULT_BILLS_SEARCH_FORM.startDate,
+    searchForm.endDate !== DEFAULT_BILLS_SEARCH_FORM.endDate,
+  ].filter(Boolean).length;
+
+  // Count active non-default sorts
+  const activeSortCount = [
+    searchForm.sortBy !== DEFAULT_BILLS_SEARCH_FORM.sortBy,
+    searchForm.sortOrder !== DEFAULT_BILLS_SEARCH_FORM.sortOrder,
+  ].filter(Boolean).length;
 
   return (
     <Box
@@ -72,38 +107,116 @@ export function BillsPage({ token }: BillsPageProps) {
           borderBottom: "1px solid #D5E3EE",
           flexShrink: 0,
           background: "#fff",
+          gap: 2,
         }}
       >
         <Typography
           variant="h5"
-          sx={{ fontWeight: 700, color: "#1A2533", pr: 5 }}
+          sx={{ fontWeight: 700, color: "#1A2533", flexShrink: 0 }}
         >
           Bills
         </Typography>
-        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+
+        {/* Search bar */}
+        <TextField
+          size="small"
+          placeholder="Search by bill ID or provider…"
+          value={searchForm.searchQuery ?? ""}
+          onChange={(e) =>
+            dispatch(
+              setBillsSearchForm({ searchQuery: e.target.value, page: 0 }),
+            )
+          }
+          sx={{ flex: 1, maxWidth: 380 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: "#9AB0C0", fontSize: "1.1rem" }} />
+              </InputAdornment>
+            ),
+          }}
+        />
+
+        <Box
+          sx={{ display: "flex", gap: 1, alignItems: "center", flexShrink: 0 }}
+        >
           {error ? (
             <Alert severity="error" sx={{ py: 0 }}>
               {error}
             </Alert>
           ) : null}
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<FilterListIcon />}
-            onClick={(e) => setFiltersAnchorEl(e.currentTarget)}
-            sx={{ borderColor: "#C8D8E8", color: "#4A6072" }}
+
+          {/* Filters button with badge */}
+          <Tooltip
+            title={
+              activeFilterCount > 0
+                ? `${activeFilterCount} filter${activeFilterCount !== 1 ? "s" : ""} active`
+                : "Filter bills"
+            }
           >
-            Filters
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<SortIcon />}
-            onClick={(e) => setSortAnchorEl(e.currentTarget)}
-            sx={{ borderColor: "#C8D8E8", color: "#4A6072" }}
+            <Badge
+              badgeContent={activeFilterCount || null}
+              color="primary"
+              overlap="circular"
+              sx={{
+                "& .MuiBadge-badge": {
+                  fontSize: "0.65rem",
+                  height: 16,
+                  minWidth: 16,
+                },
+              }}
+            >
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<FilterListIcon />}
+                onClick={(e) => setFiltersAnchorEl(e.currentTarget)}
+                sx={{
+                  borderColor: activeFilterCount > 0 ? "#1B4F72" : "#C8D8E8",
+                  color: activeFilterCount > 0 ? "#1B4F72" : "#4A6072",
+                  fontWeight: activeFilterCount > 0 ? 700 : 500,
+                }}
+              >
+                Filters
+              </Button>
+            </Badge>
+          </Tooltip>
+
+          {/* Sort button with badge */}
+          <Tooltip
+            title={
+              activeSortCount > 0
+                ? `${activeSortCount} sort${activeSortCount !== 1 ? "s" : ""} active`
+                : "Sort bills"
+            }
           >
-            Sort
-          </Button>
+            <Badge
+              badgeContent={activeSortCount || null}
+              color="primary"
+              overlap="circular"
+              sx={{
+                "& .MuiBadge-badge": {
+                  fontSize: "0.65rem",
+                  height: 16,
+                  minWidth: 16,
+                },
+              }}
+            >
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<SortIcon />}
+                onClick={(e) => setSortAnchorEl(e.currentTarget)}
+                sx={{
+                  borderColor: activeSortCount > 0 ? "#1B4F72" : "#C8D8E8",
+                  color: activeSortCount > 0 ? "#1B4F72" : "#4A6072",
+                  fontWeight: activeSortCount > 0 ? 700 : 500,
+                }}
+              >
+                Sort
+              </Button>
+            </Badge>
+          </Tooltip>
         </Box>
       </Box>
 
@@ -118,7 +231,7 @@ export function BillsPage({ token }: BillsPageProps) {
         <Box
           sx={{
             p: 2.5,
-            width: 400,
+            width: 360,
             display: "flex",
             flexDirection: "column",
             gap: 2,
@@ -130,27 +243,12 @@ export function BillsPage({ token }: BillsPageProps) {
           >
             Filter Bills
           </Typography>
-          <Box
-            sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
-          >
-            <TextField
-              label="Provider"
-              size="small"
-              value={searchForm.providerFilter}
-              onChange={(e) =>
-                dispatch(
-                  setBillsSearchForm({
-                    page: 0,
-                    providerFilter: e.target.value,
-                  }),
-                )
-              }
-              fullWidth
-            />
-            <TextField
-              label="Utility type"
-              size="small"
+
+          <FormControl fullWidth size="small">
+            <InputLabel>Utility Type</InputLabel>
+            <Select
               value={searchForm.utilityFilter}
+              label="Utility Type"
               onChange={(e) =>
                 dispatch(
                   setBillsSearchForm({
@@ -159,9 +257,16 @@ export function BillsPage({ token }: BillsPageProps) {
                   }),
                 )
               }
-              fullWidth
-            />
-          </Box>
+            >
+              <MenuItem value="">All utilities</MenuItem>
+              <MenuItem value="electric">Electric</MenuItem>
+              <MenuItem value="water">Water</MenuItem>
+              <MenuItem value="gas">Gas</MenuItem>
+              <MenuItem value="internet">Internet</MenuItem>
+              <MenuItem value="waste">Waste</MenuItem>
+            </Select>
+          </FormControl>
+
           <FormControl fullWidth size="small">
             <InputLabel>Review Status</InputLabel>
             <Select
@@ -176,12 +281,13 @@ export function BillsPage({ token }: BillsPageProps) {
                 )
               }
             >
-              <MenuItem value="">All</MenuItem>
+              <MenuItem value="">All statuses</MenuItem>
               <MenuItem value="needs_review">Needs Review</MenuItem>
               <MenuItem value="reviewed">Reviewed</MenuItem>
               <MenuItem value="not_required">OK / Not Required</MenuItem>
             </Select>
           </FormControl>
+
           <Box
             sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
           >
@@ -280,17 +386,16 @@ export function BillsPage({ token }: BillsPageProps) {
         </Box>
       </Popover>
 
-      {/* Table fills remaining height */}
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <BillsGrid bills={rows} loading={loading} stickyHeader />
-
-        {/* Pagination pinned to bottom */}
+      {/* Table + pagination */}
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <BillsGrid
+          bills={rows}
+          loading={loading}
+          stickyHeader
+          sortBy={searchForm.sortBy}
+          sortOrder={searchForm.sortOrder}
+          onSortChange={handleSortChange}
+        />
         <Box
           sx={{
             borderTop: "1px solid #D5E3EE",

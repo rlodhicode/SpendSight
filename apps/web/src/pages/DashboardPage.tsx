@@ -45,7 +45,8 @@ export function DashboardPage({ token }: DashboardPageProps) {
     setDataLoading(true);
     setReviewLoading(true);
     return Promise.all([
-      api.getSummary(activeToken, { months: 12, include_needs_review: true }),
+      // Use the dedicated dashboard endpoint — always enforces rolling 12 months server-side
+      api.getDashboardSummary(activeToken),
       api.getBills(activeToken, {
         page: 1,
         page_size: 8,
@@ -91,14 +92,7 @@ export function DashboardPage({ token }: DashboardPageProps) {
   }
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 3,
-        pb: "48px",
-      }}
-    >
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, pb: "48px" }}>
       {error ? <Alert severity="error">{error}</Alert> : null}
 
       {/* Stat cards */}
@@ -148,7 +142,7 @@ export function DashboardPage({ token }: DashboardPageProps) {
           item
           xs={12}
           md={6}
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          sx={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}
         >
           <ProviderList
             providers={summary?.totals_by_provider ?? []}
@@ -170,7 +164,7 @@ export function DashboardPage({ token }: DashboardPageProps) {
         loading={dataLoading}
       />
 
-      {/* Recent bills — card mode with icon header, same grid, View All top-right */}
+      {/* Recent bills */}
       <BillsGrid
         bills={bills}
         loading={dataLoading}

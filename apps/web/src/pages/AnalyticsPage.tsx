@@ -1,18 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import {
   Alert,
   Box,
   Card,
   CardContent,
+  Checkbox,
+  Chip,
   FormControl,
+  FormControlLabel,
   Grid,
   InputLabel,
   MenuItem,
+  OutlinedInput,
   Select,
-  Switch,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import IconButton from "@mui/material/IconButton";
 import {
   Cell,
   CartesianGrid,
@@ -22,13 +29,17 @@ import {
   Pie,
   PieChart,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from "recharts";
 
-import { api } from "../api";
-import type { AnalyticsSummary } from "../types";
+import {
+  loadAnalytics,
+  resetAnalyticsFilters,
+  setAnalyticsFilters,
+} from "../store/actions/analyticsActions";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
 
 type AnalyticsPageProps = {
   token: string;
@@ -43,155 +54,318 @@ const PIE_COLORS = [
   "#8E44AD",
 ];
 
+// Unique ID constants for InputLabel htmlFor — avoids MUI label/input association issues
+const PROVIDER_LABEL_ID = "analytics-provider-label";
+const UTILITY_LABEL_ID = "analytics-utility-label";
+
 export function AnalyticsPage({ token }: AnalyticsPageProps) {
-  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [months, setMonths] = useState<number>(12);
-  const [providerFilter, setProviderFilter] = useState("");
-  const [utilityFilter, setUtilityFilter] = useState("");
-  const [includeNeedsReview, setIncludeNeedsReview] = useState(true);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const dispatch = useAppDispatch();
+  const { filters, summary, allProviders, allUtilityTypes, loading, error } =
+    useAppSelector((state) => state.analyticsState);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await api.getSummary(token, {
-          months,
-          include_needs_review: includeNeedsReview,
-          provider: providerFilter ? [providerFilter] : undefined,
-          utility_type: utilityFilter ? [utilityFilter] : undefined,
-          start_date: startDate || undefined,
-          end_date: endDate || undefined,
-        });
-        setSummary(data);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void load();
+    void dispatch(loadAnalytics(token));
   }, [
+    dispatch,
     token,
-    months,
-    includeNeedsReview,
-    providerFilter,
-    utilityFilter,
-    startDate,
-    endDate,
+    filters.startDate,
+    filters.endDate,
+    filters.providers,
+    filters.utilityTypes,
+    filters.includeNeedsReview,
   ]);
 
-  const providerOptions = useMemo(
-    () => (summary?.totals_by_provider ?? []).map((item) => item.name),
-    [summary],
-  );
-  const utilityOptions = useMemo(
-    () => (summary?.totals_by_utility ?? []).map((item) => item.name),
-    [summary],
-  );
+  const hasActiveFilters =
+    !!filters.startDate ||
+    !!filters.endDate ||
+    filters.providers.length > 0 ||
+    filters.utilityTypes.length > 0 ||
+    !filters.includeNeedsReview;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3, pb: "48px" }}>
-      <Typography variant="h4">Analytics</Typography>
+      {/* Page header */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Typography variant="h4">Analytics</Typography>
+        {hasActiveFilters && (
+          <Chip
+            label="Filters active"
+            color="primary"
+            size="small"
+            onDelete={() => dispatch(resetAnalyticsFilters())}
+            deleteIcon={<RestartAltIcon />}
+            sx={{ fontWeight: 600 }}
+          />
+        )}
+      </Box>
+
       {error ? <Alert severity="error">{error}</Alert> : null}
 
+      {/* Filter bar */}
       <Card elevation={0}>
         <CardContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={4} md={2}>
-              <FormControl fullWidth>
-                <InputLabel id="months-label">Months</InputLabel>
-                <Select
-                  labelId="months-label"
-                  value={months}
-                  label="Months"
-                  onChange={(event) => setMonths(Number(event.target.value))}
-                >
-                  <MenuItem value={3}>3</MenuItem>
-                  <MenuItem value={6}>6</MenuItem>
-                  <MenuItem value={12}>12</MenuItem>
-                  <MenuItem value={24}>24</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={4} md={3}>
-              <FormControl fullWidth>
-                <InputLabel id="provider-filter-label">Provider</InputLabel>
-                <Select
-                  labelId="provider-filter-label"
-                  value={providerFilter}
-                  label="Provider"
-                  onChange={(event) => setProviderFilter(event.target.value)}
-                >
-                  <MenuItem value="">All Providers</MenuItem>
-                  {providerOptions.map((provider) => (
-                    <MenuItem key={provider} value={provider}>
-                      {provider}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={4} md={3}>
-              <FormControl fullWidth>
-                <InputLabel id="utility-filter-label">Utility</InputLabel>
-                <Select
-                  labelId="utility-filter-label"
-                  value={utilityFilter}
-                  label="Utility"
-                  onChange={(event) => setUtilityFilter(event.target.value)}
-                >
-                  <MenuItem value="">All Utilities</MenuItem>
-                  {utilityOptions.map((utility) => (
-                    <MenuItem key={utility} value={utility}>
-                      {utility}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+            <FilterListIcon sx={{ color: "#4A6072", fontSize: "1.1rem" }} />
+            <Typography
+              variant="subtitle2"
+              sx={{ fontWeight: 700, color: "#1A2533" }}
+            >
+              Filters
+            </Typography>
+            <Typography variant="caption" sx={{ color: "#9AB0C0", ml: 0.5 }}>
+              — defaults to all time
+            </Typography>
+          </Box>
+
+          <Grid container spacing={2} alignItems="center">
+            {/* Date range */}
             <Grid item xs={12} sm={6} md={2}>
               <TextField
-                label="Start Date"
+                label="From"
                 type="date"
-                value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-                InputLabelProps={{ shrink: true }}
+                size="small"
                 fullWidth
+                value={filters.startDate}
+                onChange={(e) =>
+                  dispatch(setAnalyticsFilters({ startDate: e.target.value }))
+                }
+                InputLabelProps={{ shrink: true }}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <TextField
-                label="End Date"
+                label="To"
                 type="date"
-                value={endDate}
-                onChange={(event) => setEndDate(event.target.value)}
-                InputLabelProps={{ shrink: true }}
+                size="small"
                 fullWidth
+                value={filters.endDate}
+                onChange={(e) =>
+                  dispatch(setAnalyticsFilters({ endDate: e.target.value }))
+                }
+                InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Switch
-                  checked={includeNeedsReview}
-                  onChange={(event) =>
-                    setIncludeNeedsReview(event.target.checked)
+
+            {/* Provider multi-select
+                Key fix: use shrink=true + notched on the InputLabel so the label
+                always sits in the top-left corner, preventing overlap with the
+                placeholder rendered via renderValue when the array is empty. */}
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel
+                  id={PROVIDER_LABEL_ID}
+                  shrink
+                  sx={{ background: "#fff", px: 0.5 }}
+                >
+                  Provider
+                </InputLabel>
+                <Select
+                  labelId={PROVIDER_LABEL_ID}
+                  multiple
+                  displayEmpty
+                  value={filters.providers}
+                  input={<OutlinedInput notched label="Provider" />}
+                  onChange={(e) =>
+                    dispatch(
+                      setAnalyticsFilters({
+                        providers:
+                          typeof e.target.value === "string"
+                            ? [e.target.value]
+                            : e.target.value,
+                      }),
+                    )
+                  }
+                  renderValue={(selected) =>
+                    selected.length === 0 ? (
+                      <Typography variant="body2" sx={{ color: "#9AB0C0" }}>
+                        All providers
+                      </Typography>
+                    ) : selected.length === 1 ? (
+                      selected[0]
+                    ) : (
+                      `${selected.length} selected`
+                    )
+                  }
+                >
+                  {allProviders.length === 0 ? (
+                    <MenuItem disabled>
+                      <Typography variant="caption" sx={{ color: "#9AB0C0" }}>
+                        No providers yet
+                      </Typography>
+                    </MenuItem>
+                  ) : (
+                    allProviders.map((p) => (
+                      <MenuItem key={p} value={p}>
+                        <Checkbox
+                          checked={filters.providers.includes(p)}
+                          size="small"
+                          sx={{ p: 0.5 }}
+                        />
+                        {p}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Utility type multi-select — same label fix */}
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel
+                  id={UTILITY_LABEL_ID}
+                  shrink
+                  sx={{ background: "#fff", px: 0.5 }}
+                >
+                  Utility
+                </InputLabel>
+                <Select
+                  labelId={UTILITY_LABEL_ID}
+                  multiple
+                  displayEmpty
+                  value={filters.utilityTypes}
+                  input={<OutlinedInput notched label="Utility" />}
+                  onChange={(e) =>
+                    dispatch(
+                      setAnalyticsFilters({
+                        utilityTypes:
+                          typeof e.target.value === "string"
+                            ? [e.target.value]
+                            : e.target.value,
+                      }),
+                    )
+                  }
+                  renderValue={(selected) =>
+                    selected.length === 0 ? (
+                      <Typography variant="body2" sx={{ color: "#9AB0C0" }}>
+                        All utilities
+                      </Typography>
+                    ) : selected.length === 1 ? (
+                      selected[0]
+                    ) : (
+                      `${selected.length} selected`
+                    )
+                  }
+                >
+                  {allUtilityTypes.length === 0 ? (
+                    <MenuItem disabled>
+                      <Typography variant="caption" sx={{ color: "#9AB0C0" }}>
+                        No utilities yet
+                      </Typography>
+                    </MenuItem>
+                  ) : (
+                    allUtilityTypes.map((u) => (
+                      <MenuItem key={u} value={u}>
+                        <Checkbox
+                          checked={filters.utilityTypes.includes(u)}
+                          size="small"
+                          sx={{ p: 0.5 }}
+                        />
+                        {u}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Include needs review */}
+            <Grid item xs={12} md={2}>
+              <Tooltip title="When off, bills flagged for review are excluded from totals">
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={filters.includeNeedsReview}
+                      onChange={(e) =>
+                        dispatch(
+                          setAnalyticsFilters({
+                            includeNeedsReview: e.target.checked,
+                          }),
+                        )
+                      }
+                      size="small"
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                      Include unreviewed
+                    </Typography>
                   }
                 />
-                <Typography variant="body2">
-                  Include bills that still need review
-                </Typography>
-              </Box>
+              </Tooltip>
             </Grid>
+
+            {/* Reset */}
+            {hasActiveFilters && (
+              <Grid item xs="auto">
+                <Tooltip title="Reset all filters">
+                  <IconButton
+                    size="small"
+                    onClick={() => dispatch(resetAnalyticsFilters())}
+                    sx={{ color: "#9AB0C0", "&:hover": { color: "#C0392B" } }}
+                  >
+                    <RestartAltIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Grid>
+            )}
           </Grid>
         </CardContent>
       </Card>
 
+      {/* Summary stat chips */}
+      {summary && !loading && (
+        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+          <Chip
+            label={`Total: $${summary.total_spend.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
+            sx={{ fontWeight: 700, background: "#EEF5FB", color: "#1B4F72" }}
+          />
+          <Chip
+            label={`Avg bill: $${summary.average_bill.toFixed(2)}`}
+            sx={{ fontWeight: 700, background: "#EEF5FB", color: "#1B4F72" }}
+          />
+          <Chip
+            label={`${summary.bills_count} bill${summary.bills_count !== 1 ? "s" : ""}`}
+            sx={{ fontWeight: 700, background: "#EEF5FB", color: "#1B4F72" }}
+          />
+          {!filters.startDate && !filters.endDate && (
+            <Chip
+              label="All time"
+              variant="outlined"
+              size="small"
+              sx={{ color: "#7A92A6" }}
+            />
+          )}
+          {(filters.startDate || filters.endDate) && (
+            <Chip
+              label={
+                filters.startDate && filters.endDate
+                  ? `${filters.startDate} → ${filters.endDate}`
+                  : filters.startDate
+                    ? `From ${filters.startDate}`
+                    : `Until ${filters.endDate}`
+              }
+              variant="outlined"
+              size="small"
+              sx={{ color: "#4A6072" }}
+            />
+          )}
+        </Box>
+      )}
+
+      {loading && (
+        <Typography variant="body2" sx={{ color: "#9AB0C0" }}>
+          Loading analytics…
+        </Typography>
+      )}
+
+      {/* Charts */}
       <Grid container spacing={2}>
         <Grid item xs={12} md={6}>
           <Card elevation={0}>
@@ -220,7 +394,7 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
                         ),
                       )}
                     </Pie>
-                    <Tooltip />
+                    <RechartsTooltip />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -228,6 +402,7 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
             </CardContent>
           </Card>
         </Grid>
+
         <Grid item xs={12} md={6}>
           <Card elevation={0}>
             <CardContent>
@@ -255,7 +430,7 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
                         ),
                       )}
                     </Pie>
-                    <Tooltip />
+                    <RechartsTooltip />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -276,7 +451,7 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
-                <Tooltip />
+                <RechartsTooltip />
                 <Legend />
                 <Line
                   type="monotone"
@@ -289,10 +464,6 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
           </Box>
         </CardContent>
       </Card>
-
-      {loading ? (
-        <Typography variant="body2">Loading analytics...</Typography>
-      ) : null}
     </Box>
   );
 }

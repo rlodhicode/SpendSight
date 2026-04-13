@@ -58,21 +58,33 @@ export const ProviderList: React.FC<ProviderListProps> = ({
                       <Skeleton variant="text" width={120} />
                       <Skeleton variant="text" width={60} />
                     </Box>
-                    <Skeleton variant="rectangular" height={6} sx={{ borderRadius: 4 }} />
+                    <Skeleton
+                      variant="rectangular"
+                      height={6}
+                      sx={{ borderRadius: 4 }}
+                    />
                   </Box>
                 ))
               : sorted.map((p, i) => {
                   const pct = totalSpend > 0 ? (p.total / totalSpend) * 100 : 0;
                   const color = COLORS[i % COLORS.length];
                   return (
-                    <Box key={p.name} className={styles.item} data-testid="provider-item">
+                    <Box
+                      key={p.name}
+                      className={styles.item}
+                      data-testid="provider-item"
+                    >
                       <Box className={styles.itemHeader}>
                         <Box className={styles.nameRow}>
                           <Box
                             className={styles.dot}
                             style={{ background: color }}
                           />
-                          <Typography variant="body2" className={styles.name}>
+                          <Typography
+                            variant="body2"
+                            className={styles.name}
+                            title={p.name}
+                          >
                             {p.name}
                           </Typography>
                         </Box>

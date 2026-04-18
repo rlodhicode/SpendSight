@@ -19,6 +19,9 @@ import {
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import ReceiptIcon from "@mui/icons-material/Receipt";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import IconButton from "@mui/material/IconButton";
 import {
   Cell,
@@ -40,6 +43,7 @@ import {
   setAnalyticsFilters,
 } from "../store/actions/analyticsActions";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { StatCard } from "../components/StatCard";
 
 type AnalyticsPageProps = {
   token: string;
@@ -117,9 +121,6 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
               sx={{ fontWeight: 700, color: "#1A2533" }}
             >
               Filters
-            </Typography>
-            <Typography variant="caption" sx={{ color: "#9AB0C0", ml: 0.5 }}>
-              — defaults to all time
             </Typography>
           </Box>
 
@@ -322,40 +323,33 @@ export function AnalyticsPage({ token }: AnalyticsPageProps) {
       {/* Summary stat chips */}
       {summary && !loading && (
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-          <Chip
-            label={`Total: $${summary.total_spend.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
-            sx={{ fontWeight: 700, background: "#EEF5FB", color: "#1B4F72" }}
-          />
-          <Chip
-            label={`Avg bill: $${summary.average_bill.toFixed(2)}`}
-            sx={{ fontWeight: 700, background: "#EEF5FB", color: "#1B4F72" }}
-          />
-          <Chip
-            label={`${summary.bills_count} bill${summary.bills_count !== 1 ? "s" : ""}`}
-            sx={{ fontWeight: 700, background: "#EEF5FB", color: "#1B4F72" }}
-          />
-          {!filters.startDate && !filters.endDate && (
-            <Chip
-              label="All time"
-              variant="outlined"
-              size="small"
-              sx={{ color: "#7A92A6" }}
-            />
-          )}
-          {(filters.startDate || filters.endDate) && (
-            <Chip
-              label={
-                filters.startDate && filters.endDate
-                  ? `${filters.startDate} → ${filters.endDate}`
-                  : filters.startDate
-                    ? `From ${filters.startDate}`
-                    : `Until ${filters.endDate}`
-              }
-              variant="outlined"
-              size="small"
-              sx={{ color: "#4A6072" }}
-            />
-          )}
+          {/* Stat cards */}
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <StatCard
+                      title="Total Spend"
+                      value={`$${summary?.total_spend.toLocaleString("en-US", { minimumFractionDigits: 2 }) ?? "0.00"}`}
+                      icon={<AttachMoneyIcon />}
+                      color="primary"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <StatCard
+                      title="Average Bill"
+                      value={`$${summary?.average_bill.toFixed(2) ?? "0.00"}`}
+                      icon={<TrendingUpIcon />}
+                      color="secondary"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <StatCard
+                      title="Bills Processed"
+                      value={summary?.bills_count ?? 0}
+                      icon={<ReceiptIcon />}
+                      color="success"
+                    />
+                  </Grid>
+                </Grid>
         </Box>
       )}
 

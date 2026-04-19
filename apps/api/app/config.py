@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     job_status_ttl_seconds: int = 86_400
     analytics_cache_ttl_seconds: int = 600
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origin_regex: str = (
+        r"^https://spendsight-(web|api)-[a-z0-9-]+\.(?:a\.run\.app|[a-z0-9-]+\.run\.app)$"
+    )
     storage_provider: str = "local"
     gcs_bucket: str = ""
     allowed_upload_extensions: str = ".pdf,.png,.jpg,.jpeg,.docx"

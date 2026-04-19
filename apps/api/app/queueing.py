@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from abc import ABC, abstractmethod
 
@@ -8,6 +9,8 @@ from google.cloud import pubsub_v1
 
 from .config import settings
 from .events import ProcessingEvent
+
+logger = logging.getLogger("spendsight-api.queueing")
 
 
 class QueuePublisher(ABC):
@@ -46,6 +49,12 @@ class PubSubQueuePublisher(QueuePublisher):
         except gcloud_exceptions.AlreadyExists:
             # Another process created it simultaneously.
             pass
+        except gcloud_exceptions.PermissionDenied:
+            logger.warning(
+                "No permission to check/create Pub/Sub topic '%s'. "
+                "Proceeding without auto-create; publishing may still work if topic exists.",
+                self.topic_path,
+            )
 
     def publish(self, event: ProcessingEvent) -> None:
         payload = event.model_dump(mode="json")

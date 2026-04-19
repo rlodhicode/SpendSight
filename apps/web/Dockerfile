@@ -1,12 +1,21 @@
-FROM node:20-alpine
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci
 
 COPY . .
+RUN npm run build
 
-EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+FROM node:20-alpine
+
+WORKDIR /app
+RUN npm install -g serve
+
+COPY --from=build /app/dist ./dist
+
+ENV PORT=8080
+EXPOSE 8080
+CMD ["sh", "-c", "serve -s dist -l ${PORT}"]
 

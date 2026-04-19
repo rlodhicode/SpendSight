@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import Optional
 import json
 import logging
+import os
+import threading
 import time
 from datetime import datetime
 from decimal import Decimal
@@ -23,6 +25,8 @@ logger = logging.getLogger("spendsight-worker")
 redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
 extractor = VertexGeminiExtractor()
 app = FastAPI(title="SpendSight Worker", version="0.2.0")
+_worker_loop_lock = threading.Lock()
+_worker_loop_thread: threading.Thread | None = None
 
 
 def set_job_status(
@@ -216,6 +220,28 @@ def run_local_worker_loop() -> None:
         except Exception:
             logger.exception("Worker loop error; sleeping briefly")
             time.sleep(2)
+
+
+def _start_worker_loop_in_background() -> None:
+    global _worker_loop_thread
+    with _worker_loop_lock:
+        if _worker_loop_thread and _worker_loop_thread.is_alive():
+            return
+        _worker_loop_thread = threading.Thread(
+            target=run_local_worker_loop,
+            name="spendsight-worker-loop",
+            daemon=True,
+        )
+        _worker_loop_thread.start()
+        logger.info("Worker polling loop started in background thread.")
+
+
+@app.on_event("startup")
+def startup_worker_loop() -> None:
+    if os.getenv("WORKER_LOOP_ENABLED", "true").strip().lower() != "true":
+        logger.info("WORKER_LOOP_ENABLED is false; background loop will not start.")
+        return
+    _start_worker_loop_in_background()
 
 
 if __name__ == "__main__":

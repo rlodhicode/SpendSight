@@ -13,10 +13,10 @@ from sqlalchemy.orm import Session
 from .config import settings
 from .events import ProcessingEvent
 from .models import UtilityIdSequence
-from .queueing import get_queue_publisher
+from .queueing import QueuePublisher, get_queue_publisher
 
 redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
-queue_publisher = get_queue_publisher(redis_client)
+queue_publisher: QueuePublisher | None = None
 
 UTILITY_PREFIX_MAP = {
     "electric": "E",
@@ -108,6 +108,9 @@ def download_storage_object(storage_uri: str) -> tuple[bytes, str]:
 
 
 def enqueue_job(event: ProcessingEvent) -> None:
+    global queue_publisher
+    if queue_publisher is None:
+        queue_publisher = get_queue_publisher(redis_client)
     queue_publisher.publish(event)
 
 

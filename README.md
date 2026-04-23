@@ -1,5 +1,11 @@
 # SpendSight
 
+## Project Participants
+
+- Rayaan Lodhi
+
+---
+
 Cloud-native utility bill analytics platform with decoupled backend processing.
 
 - `apps/api`: FastAPI service for auth, uploads, status, analytics, and human review APIs
@@ -21,6 +27,10 @@ Cloud-native utility bill analytics platform with decoupled backend processing.
   - field-level confidence rows
   - review-required status
 - Redis stores job status (24h TTL) and analytics cache (10m TTL).
+
+## Deployment
+
+See the README in [deploy](deploy/README.md)
 
 ## Local Development
 
